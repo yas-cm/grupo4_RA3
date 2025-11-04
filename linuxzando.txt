@@ -1,0 +1,14 @@
+ls = listar (o que tem na pasta)
+ls /proc/          # Mostra TODOS os processos
+ls /proc/1/        # Mostra arquivos do processo 1
+
+cat = mostrar conteudo (ler arquivo)
+cat /proc/1/stat   # Mostra info do processo 1
+cat /proc/meminfo  # Mostra info da memória
+
+ps = Lista de programas rodando
+ps aux            # Mostra TODOS os programas
+
+18459 (sleep)
+gcc src/monitor_basico.c -o monitor
+./monitor
