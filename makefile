@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -Iinclude
 TARGET = monitor
 
-SOURCES = src/main.c src/cpu_monitor.c
+SOURCES = src/main.c src/cpu_monitor.c src/memory_monitor.c src/io_monitor.c src/net_monitor.c
 
 $(TARGET): $(SOURCES)
 	$(CC) $(CFLAGS) -o $(TARGET) $(SOURCES)
@@ -11,7 +11,7 @@ clean:
 	rm -f $(TARGET) src/*.o
 
 run: $(TARGET)
-	./$(TARGET)
+	./$(TARGET) --pids 1,1234
 
 debug: CFLAGS += -g
 debug: $(TARGET)

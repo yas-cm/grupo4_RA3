@@ -145,3 +145,70 @@ void calcular_cpu_usage(int pid) {
     sprintf(cmd, "ps -p %d -o pid,pcpu,pmem,comm,time 2>/dev/null", pid);
     system(cmd);
 }
+
+// VERSÃO SIMPLIFICADA E FUNCIONAL para monitoramento contínuo
+double calcular_cpu_usage_contorno(int pid, unsigned long *last_total_time) {
+    char caminho[100];
+    FILE *arquivo;
+    char linha[512];
+    unsigned long utime = 0, stime = 0;
+    int i;
+    long clock_ticks = sysconf(_SC_CLK_TCK);
+    static time_t last_calculation = 0;
+    static double last_usage[10000] = {0};
+    
+    sprintf(caminho, "/proc/%d/stat", pid);
+    arquivo = fopen(caminho, "r");
+    if (arquivo == NULL) {
+        return 0.0;
+    }
+    
+    fgets(linha, sizeof(linha), arquivo);
+    fclose(arquivo);
+    
+    // Parsing
+    char *token = strtok(linha, " ");
+    for (i = 1; i <= 15 && token != NULL; i++) {
+        if (i == 14) utime = strtoul(token, NULL, 10);
+        else if (i == 15) stime = strtoul(token, NULL, 10);
+        token = strtok(NULL, " ");
+    }
+    
+    unsigned long total_time = utime + stime;
+    time_t current_time = time(NULL);
+    
+    if (*last_total_time == 0) {
+        *last_total_time = total_time;
+        last_calculation = current_time;
+        return 0.0;
+    }
+    
+    // Só calcular a cada 2 segundos para maior estabilidade
+    if (current_time - last_calculation < 2) {
+        return last_usage[pid];
+    }
+    
+    double elapsed = difftime(current_time, last_calculation);
+    if (elapsed < 1.5) {
+        return last_usage[pid];
+    }
+    
+    unsigned long diff = total_time - *last_total_time;
+    *last_total_time = total_time;
+    last_calculation = current_time;
+    
+    double cpu_usage = ((double)diff / clock_ticks / elapsed) * 100.0;
+    
+    // Filtro simples: descartar valores absurdos
+    if (cpu_usage < 0 || cpu_usage > 100) {
+        return last_usage[pid];
+    }
+    
+    // Suavização simples
+    if (last_usage[pid] > 0) {
+        cpu_usage = (cpu_usage + last_usage[pid]) / 2.0;
+    }
+    
+    last_usage[pid] = cpu_usage;
+    return cpu_usage;
+}
