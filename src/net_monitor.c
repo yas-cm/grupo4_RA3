@@ -129,3 +129,4 @@ void mostrar_metricas_rede_avancadas(int pid) {
     printf("  - Close Wait: %d, Time Wait: %d\n", conns.tcp_close_wait, conns.tcp_time_wait);
     printf("Conexões UDP: %d\n", conns.udp_connections);
 }
+

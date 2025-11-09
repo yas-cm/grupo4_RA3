@@ -1,28 +1,36 @@
+# Nome do executável final
+TARGET = resource_monitor
+
+# Compilador
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -I./include
-SRCDIR = src
-SOURCES = $(SRCDIR)/main.c $(SRCDIR)/cpu_monitor.c $(SRCDIR)/memory_monitor.c $(SRCDIR)/io_monitor.c $(SRCDIR)/net_monitor.c
-TARGET = resource-monitor
-OBJS = $(SOURCES:.c=.o)
+
+# Flags de Compilação
+# A flag -D_POSIX_C_SOURCE=200809L é a mais importante aqui.
+CFLAGS = -D_POSIX_C_SOURCE=200809L -Wall -Wextra -std=c99 -I./include
+
+# Pasta dos fontes e objetos
+SRC_DIR = src
+OBJ_DIR = obj
+
+# Lista de arquivos fonte (.c)
+SRCS = $(wildcard $(SRC_DIR)/*.c)
+
+# Gera a lista de arquivos objeto (.o) a partir da lista de fontes
+OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
+
+# Regra principal: compila o executável
+all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
+	$(CC) $(OBJS) -o $(TARGET)
 
-%.o: %.c
+# Regra para compilar cada arquivo .c em um .o
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	@mkdir -p $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# Regra para limpar os arquivos gerados
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -rf $(OBJ_DIR) $(TARGET)
 
-install: $(TARGET)
-	cp $(TARGET) /usr/local/bin/
-
-test: $(TARGET)
-	@echo "=== TESTANDO COM PROCESSO ATUAL ==="
-	./$(TARGET) --pid $$ --detalhes
-
-test-multiple: $(TARGET)
-	@echo "=== TESTANDO MULTIPLOS PROCESSOS ==="
-	./$(TARGET) --pids 1,$$ --intervalo 2
-
-.PHONY: clean install test test-multiple
+.PHONY: all clean

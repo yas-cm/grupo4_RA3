@@ -93,6 +93,8 @@ void obter_limites_memoria(int pid, unsigned long *soft_limit, unsigned long *ha
 }
 
 void mostrar_metricas_memoria_avancadas(int pid) {
+    printf("\n=== METRICAS AVANCADAS DE MEMORIA ===\n");
+    
     unsigned long minor_faults, major_faults, swap_kb;
     obter_page_faults_e_swap(pid, &minor_faults, &major_faults, &swap_kb);
     
@@ -103,13 +105,16 @@ void mostrar_metricas_memoria_avancadas(int pid) {
     unsigned long vsz = obter_vsz(pid);
     double memoria_vsz = (vsz * sysconf(_SC_PAGESIZE)) / (1024.0 * 1024.0);
     
-    printf("\n=== METRICAS AVANCADAS DE MEMORIA ===\n");
     printf("RSS: %.1f MB\n", memoria_rss);
     printf("VSZ: %.1f MB\n", memoria_vsz);
     printf("Page Faults - Minor: %lu, Major: %lu\n", minor_faults, major_faults);
     printf("Swap Usage: %.1f MB\n", swap_kb / 1024.0);
     printf("Limites de Memória - Soft: %.1f MB, Hard: %.1f MB\n", 
            soft_limit / (1024.0 * 1024.0), hard_limit / (1024.0 * 1024.0));
+    
+    // Adicionar informações de páginas
+    printf("Page Size: %ld bytes\n", sysconf(_SC_PAGESIZE));
+    printf("Total Pages (RSS): %lu\n", (unsigned long)(memoria_rss * 1024 * 1024 / sysconf(_SC_PAGESIZE)));
 }
 
 void obter_nome_processo(int pid, char *buffer, size_t size) {

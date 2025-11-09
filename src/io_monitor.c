@@ -37,8 +37,8 @@ IOMetrics obter_io_metrics(int pid) {
 
 void calcular_taxas_io(IOMetrics *antes, IOMetrics *depois, int intervalo, double *read_rate, double *write_rate) {
     if (intervalo > 0) {
-        *read_rate = (depois->read_chars - antes->read_chars) / (double)intervalo;
-        *write_rate = (depois->write_chars - antes->write_chars) / (double)intervalo;
+        *read_rate = (depois->read_bytes - antes->read_bytes) / (double)intervalo;  
+        *write_rate = (depois->write_bytes - antes->write_bytes) / (double)intervalo; 
     } else {
         *read_rate = *write_rate = 0;
     }

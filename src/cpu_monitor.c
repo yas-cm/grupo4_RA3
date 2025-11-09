@@ -5,212 +5,76 @@
 #include <time.h>
 #include "../include/monitor.h"
 
-// Uso ATUAL da CPU (como top)
-void calcular_cpu_usage_atual(int pid) {
+// Em src/cpu_monitor.c
+
+// Substitua a sua função calcular_cpu_usage existente por esta:
+
+void calcular_cpu_usage(ProcessMetrics *metrics) {
     char caminho[100];
     FILE *arquivo;
-    char linha[512];
-    char nome_processo[256];
-    unsigned long utime1, stime1, utime2, stime2;
-    int i;
-    long clock_ticks;
+    char linha[1024];
     
-    clock_ticks = sysconf(_SC_CLK_TCK);
-    
-    // PRIMEIRA LEITURA
-    sprintf(caminho, "/proc/%d/stat", pid);
-    arquivo = fopen(caminho, "r");
-    if (arquivo == NULL) {
-        printf("ERRO: Processo %d nao encontrado!\n", pid);
-        return;
-    }
-    
-    fgets(linha, sizeof(linha), arquivo);
-    fclose(arquivo);
-    
-    // Parsing
-    char *token = strtok(linha, " ");
-    for (i = 1; i <= 15 && token != NULL; i++) {
-        if (i == 2) {
-            strcpy(nome_processo, token);
-        } else if (i == 14) {
-            utime1 = strtoul(token, NULL, 10);
-        } else if (i == 15) {
-            stime1 = strtoul(token, NULL, 10);
-        }
-        token = strtok(NULL, " ");
-    }
-    
-    sleep(1);
-    
-    // SEGUNDA LEITURA
-    arquivo = fopen(caminho, "r");
-    if (arquivo == NULL) {
-        printf("ERRO: Processo %d terminou!\n", pid);
-        return;
-    }
-    
-    fgets(linha, sizeof(linha), arquivo);
-    fclose(arquivo);
-    
-    token = strtok(linha, " ");
-    for (i = 1; i <= 15 && token != NULL; i++) {
-        if (i == 14) {
-            utime2 = strtoul(token, NULL, 10);
-        } else if (i == 15) {
-            stime2 = strtoul(token, NULL, 10);
-        }
-        token = strtok(NULL, " ");
-    }
-    
-    // Cálculo do uso ATUAL
-    unsigned long diff = (utime2 + stime2) - (utime1 + stime1);
-    double cpu_usage = ((double)diff / clock_ticks) * 100.0;
-    
-    printf("=== USO ATUAL DE CPU (como top) ===\n");
-    printf("Processo: %s (PID: %d)\n", nome_processo, pid);
-    printf("Diff CPU time: %lu jiffies\n", diff);
-    printf("Uso de CPU (ultimo 1s): %.1f%%\n", cpu_usage);
-}
-
-// Uso MÉDIO da CPU (como ps)
-void calcular_cpu_usage_medio(int pid) {
-    char caminho[100];
-    FILE *arquivo;
-    char linha[512];
-    char nome_processo[256];
-    unsigned long utime, stime, starttime;
-    long uptime, clock_ticks;
-    int i;
-    
-    clock_ticks = sysconf(_SC_CLK_TCK);
-    
-    // Ler uptime do sistema
-    arquivo = fopen("/proc/uptime", "r");
-    if (arquivo) {
-        fscanf(arquivo, "%ld", &uptime);
-        fclose(arquivo);
-    }
-    
-    // Ler stats do processo
-    sprintf(caminho, "/proc/%d/stat", pid);
-    arquivo = fopen(caminho, "r");
-    if (arquivo == NULL) {
-        printf("ERRO: Processo %d nao encontrado!\n", pid);
-        return;
-    }
-    
-    fgets(linha, sizeof(linha), arquivo);
-    fclose(arquivo);
-    
-    // Parsing
-    char *token = strtok(linha, " ");
-    for (i = 1; i <= 22 && token != NULL; i++) {
-        if (i == 2) {
-            strcpy(nome_processo, token);
-        } else if (i == 14) {
-            utime = strtoul(token, NULL, 10);
-        } else if (i == 15) {
-            stime = strtoul(token, NULL, 10);
-        } else if (i == 22) {
-            starttime = strtoul(token, NULL, 10);
-        }
-        token = strtok(NULL, " ");
-    }
-    
-    // Cálculo do PS: (total_cpu_time / Hertz) / seconds_since_start * 100%
-    double seconds_since_start = uptime - (starttime / (double)clock_ticks);
-    if (seconds_since_start < 0.1) seconds_since_start = 0.1;
-    
-    unsigned long total_cpu_time = utime + stime;
-    double total_cpu_seconds = total_cpu_time / (double)clock_ticks;
-    double cpu_usage_medio = (total_cpu_seconds / seconds_since_start) * 100.0;
-    
-    printf("=== USO MEDIO DE CPU (como ps aux) ===\n");
-    printf("Processo: %s (PID: %d)\n", nome_processo, pid);
-    printf("Total CPU time: %lu jiffies (%.1f segundos)\n", total_cpu_time, total_cpu_seconds);
-    printf("Tempo desde inicio: %.1f segundos\n", seconds_since_start);
-    printf("Uso de CPU MEDIO: %.1f%%\n", cpu_usage_medio);
-}
-
-void calcular_cpu_usage(int pid) {
-    printf("\n");
-    calcular_cpu_usage_atual(pid);
-    printf("\n");
-    calcular_cpu_usage_medio(pid);
-    
-    // Comparação com ps real
-    printf("\n=== COMPARACAO COM PS REAL ===\n");
-    char cmd[100];
-    sprintf(cmd, "ps -p %d -o pid,pcpu,pmem,comm,time 2>/dev/null", pid);
-    system(cmd);
-}
-
-// VERSÃO SIMPLIFICADA E FUNCIONAL para monitoramento contínuo
-double calcular_cpu_usage_contorno(int pid, unsigned long *last_total_time) {
-    char caminho[100];
-    FILE *arquivo;
-    char linha[512];
-    unsigned long utime = 0, stime = 0;
-    int i;
+    unsigned long utime, stime;
     long clock_ticks = sysconf(_SC_CLK_TCK);
-    static time_t last_calculation = 0;
-    static double last_usage[10000] = {0};
-    
-    sprintf(caminho, "/proc/%d/stat", pid);
+
+    sprintf(caminho, "/proc/%d/stat", metrics->pid);
     arquivo = fopen(caminho, "r");
     if (arquivo == NULL) {
-        return 0.0;
+        // Se o processo sumiu, o uso de CPU deve zerar gradualmente.
+        // Aplicamos a suavização com um valor bruto de 0.
+        metrics->cpu_usage = metrics->cpu_usage * 0.7; 
+        if (metrics->cpu_usage < 0.1) metrics->cpu_usage = 0.0;
+        return;
     }
-    
-    fgets(linha, sizeof(linha), arquivo);
+
+    if (fgets(linha, sizeof(linha), arquivo) == NULL) {
+        fclose(arquivo);
+        metrics->cpu_usage = 0.0;
+        return;
+    }
     fclose(arquivo);
-    
-    // Parsing
-    char *token = strtok(linha, " ");
-    for (i = 1; i <= 15 && token != NULL; i++) {
-        if (i == 14) utime = strtoul(token, NULL, 10);
-        else if (i == 15) stime = strtoul(token, NULL, 10);
-        token = strtok(NULL, " ");
+
+    sscanf(linha, "%*d %*s %*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu %lu", &utime, &stime);
+
+    unsigned long total_jiffies = utime + stime;
+    struct timespec current_time;
+    clock_gettime(CLOCK_MONOTONIC, &current_time);
+
+    // Se for a primeira medição (last_total_jiffies == 0),
+    // apenas armazenamos os valores e saímos. O uso de CPU continua 0.
+    if (metrics->last_total_jiffies == 0) {
+        metrics->last_total_jiffies = total_jiffies;
+        metrics->last_time_snapshot = current_time;
+        // Não definimos cpu_usage aqui, ele começará em 0 e aumentará gradualmente
+        return;
     }
-    
-    unsigned long total_time = utime + stime;
-    time_t current_time = time(NULL);
-    
-    if (*last_total_time == 0) {
-        *last_total_time = total_time;
-        last_calculation = current_time;
-        return 0.0;
+
+    double jiffies_diff = total_jiffies - metrics->last_total_jiffies;
+    double time_diff_sec = (current_time.tv_sec - metrics->last_time_snapshot.tv_sec) + 
+                           (current_time.tv_nsec - metrics->last_time_snapshot.tv_nsec) / 1e9;
+
+    metrics->last_total_jiffies = total_jiffies;
+    metrics->last_time_snapshot = current_time;
+
+    // Evita divisão por zero ou picos absurdos em intervalos muito curtos
+    if (time_diff_sec < 0.1) { 
+        // Se o intervalo for muito curto, não atualizamos o valor, mantemos o suavizado anterior.
+        return;
     }
+
+    // --- CÁLCULO DO USO BRUTO E APLICAÇÃO DA SUAVIZAÇÃO ---
+
+    // 1. Calcula o uso de CPU bruto para este intervalo específico
+    double cpu_seconds_used = jiffies_diff / (double)clock_ticks;
+    double raw_cpu_usage = (cpu_seconds_used / time_diff_sec) * 100.0;
     
-    // Só calcular a cada 2 segundos para maior estabilidade
-    if (current_time - last_calculation < 2) {
-        return last_usage[pid];
-    }
+    // Garante que o valor bruto não seja negativo.
+    if (raw_cpu_usage < 0.0) raw_cpu_usage = 0.0;
     
-    double elapsed = difftime(current_time, last_calculation);
-    if (elapsed < 1.5) {
-        return last_usage[pid];
-    }
-    
-    unsigned long diff = total_time - *last_total_time;
-    *last_total_time = total_time;
-    last_calculation = current_time;
-    
-    double cpu_usage = ((double)diff / clock_ticks / elapsed) * 100.0;
-    
-    // Filtro simples: descartar valores absurdos
-    if (cpu_usage < 0 || cpu_usage > 100) {
-        return last_usage[pid];
-    }
-    
-    // Suavização simples
-    if (last_usage[pid] > 0) {
-        cpu_usage = (cpu_usage + last_usage[pid]) / 2.0;
-    }
-    
-    last_usage[pid] = cpu_usage;
-    return cpu_usage;
+    // 2. Aplica a Média Móvel Exponencial (EMA) para suavizar o valor
+    // A fórmula dá 70% de "peso" ao valor histórico e 30% ao valor novo.
+    // Isso amortece os picos e vales, resultando em um valor mais estável.
+    metrics->cpu_usage = (metrics->cpu_usage * 0.7) + (raw_cpu_usage * 0.3);
 }
 
 void obter_context_switches_e_threads(int pid, unsigned long *voluntary, unsigned long *nonvoluntary, int *threads) {
@@ -247,7 +111,6 @@ void obter_syscalls_e_iowait(int pid, unsigned long *syscalls_read, unsigned lon
     *syscalls_write = 0;
     *io_wait_ticks = 0;
     
-    // Syscalls do /proc/pid/io
     sprintf(caminho, "/proc/%d/io", pid);
     arquivo = fopen(caminho, "r");
     if (arquivo) {
@@ -261,25 +124,18 @@ void obter_syscalls_e_iowait(int pid, unsigned long *syscalls_read, unsigned lon
         fclose(arquivo);
     }
     
-    // I/O wait do /proc/pid/stat (campo 42)
     sprintf(caminho, "/proc/%d/stat", pid);
     arquivo = fopen(caminho, "r");
     if (arquivo) {
-        fgets(linha, sizeof(linha), arquivo);
+        // O campo 42 (delayacct_blkio_ticks) representa o tempo de espera de I/O
+        fscanf(arquivo, "%*d %*s %*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %*u %*u %*u %*u %*d %*d %*d %*d %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %lu", io_wait_ticks);
         fclose(arquivo);
-        
-        char *token = strtok(linha, " ");
-        for (int i = 1; i <= 42 && token != NULL; i++) {
-            if (i == 42) *io_wait_ticks = strtoul(token, NULL, 10);
-            token = strtok(NULL, " ");
-        }
     }
 }
 
 void obter_prioridade_nice(int pid, int *priority, int *nice_value) {
     char caminho[100];
     FILE *arquivo;
-    char linha[512];
     
     *priority = 0;
     *nice_value = 0;
@@ -287,15 +143,9 @@ void obter_prioridade_nice(int pid, int *priority, int *nice_value) {
     sprintf(caminho, "/proc/%d/stat", pid);
     arquivo = fopen(caminho, "r");
     if (arquivo) {
-        fgets(linha, sizeof(linha), arquivo);
+        // Campo 18 (priority) e 19 (nice)
+        fscanf(arquivo, "%*d %*s %*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %*u %*u %*u %*u %d %d", priority, nice_value);
         fclose(arquivo);
-        
-        char *token = strtok(linha, " ");
-        for (int i = 1; i <= 19 && token != NULL; i++) {
-            if (i == 18) *nice_value = atoi(token);
-            else if (i == 19) *priority = atoi(token);
-            token = strtok(NULL, " ");
-        }
     }
 }
 
@@ -311,7 +161,7 @@ void mostrar_metricas_cpu_avancadas(int pid) {
     unsigned long syscalls_read, syscalls_write, io_wait_ticks;
     obter_syscalls_e_iowait(pid, &syscalls_read, &syscalls_write, &io_wait_ticks);
     printf("Syscalls - Read: %lu, Write: %lu\n", syscalls_read, syscalls_write);
-    printf("I/O Wait Time: %.1f seconds\n", io_wait_ticks / (double)sysconf(_SC_CLK_TCK));
+    printf("I/O Wait Time: %.2f seconds\n", io_wait_ticks / (double)sysconf(_SC_CLK_TCK));
     
     int priority, nice_value;
     obter_prioridade_nice(pid, &priority, &nice_value);
