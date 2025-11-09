@@ -212,3 +212,108 @@ double calcular_cpu_usage_contorno(int pid, unsigned long *last_total_time) {
     last_usage[pid] = cpu_usage;
     return cpu_usage;
 }
+
+void obter_context_switches_e_threads(int pid, unsigned long *voluntary, unsigned long *nonvoluntary, int *threads) {
+    char caminho[100];
+    FILE *arquivo;
+    char linha[256];
+    
+    *voluntary = 0;
+    *nonvoluntary = 0;
+    *threads = 0;
+    
+    sprintf(caminho, "/proc/%d/status", pid);
+    arquivo = fopen(caminho, "r");
+    if (arquivo) {
+        while (fgets(linha, sizeof(linha), arquivo)) {
+            if (strstr(linha, "voluntary_ctxt_switches:") == linha) {
+                sscanf(linha, "voluntary_ctxt_switches: %lu", voluntary);
+            } else if (strstr(linha, "nonvoluntary_ctxt_switches:") == linha) {
+                sscanf(linha, "nonvoluntary_ctxt_switches: %lu", nonvoluntary);
+            } else if (strstr(linha, "Threads:") == linha) {
+                sscanf(linha, "Threads: %d", threads);
+            }
+        }
+        fclose(arquivo);
+    }
+}
+
+void obter_syscalls_e_iowait(int pid, unsigned long *syscalls_read, unsigned long *syscalls_write, unsigned long *io_wait_ticks) {
+    char caminho[100];
+    FILE *arquivo;
+    char linha[256];
+    
+    *syscalls_read = 0;
+    *syscalls_write = 0;
+    *io_wait_ticks = 0;
+    
+    // Syscalls do /proc/pid/io
+    sprintf(caminho, "/proc/%d/io", pid);
+    arquivo = fopen(caminho, "r");
+    if (arquivo) {
+        while (fgets(linha, sizeof(linha), arquivo)) {
+            if (strstr(linha, "syscr") == linha) {
+                sscanf(linha, "syscr: %lu", syscalls_read);
+            } else if (strstr(linha, "syscw") == linha) {
+                sscanf(linha, "syscw: %lu", syscalls_write);
+            }
+        }
+        fclose(arquivo);
+    }
+    
+    // I/O wait do /proc/pid/stat (campo 42)
+    sprintf(caminho, "/proc/%d/stat", pid);
+    arquivo = fopen(caminho, "r");
+    if (arquivo) {
+        fgets(linha, sizeof(linha), arquivo);
+        fclose(arquivo);
+        
+        char *token = strtok(linha, " ");
+        for (int i = 1; i <= 42 && token != NULL; i++) {
+            if (i == 42) *io_wait_ticks = strtoul(token, NULL, 10);
+            token = strtok(NULL, " ");
+        }
+    }
+}
+
+void obter_prioridade_nice(int pid, int *priority, int *nice_value) {
+    char caminho[100];
+    FILE *arquivo;
+    char linha[512];
+    
+    *priority = 0;
+    *nice_value = 0;
+    
+    sprintf(caminho, "/proc/%d/stat", pid);
+    arquivo = fopen(caminho, "r");
+    if (arquivo) {
+        fgets(linha, sizeof(linha), arquivo);
+        fclose(arquivo);
+        
+        char *token = strtok(linha, " ");
+        for (int i = 1; i <= 19 && token != NULL; i++) {
+            if (i == 18) *nice_value = atoi(token);
+            else if (i == 19) *priority = atoi(token);
+            token = strtok(NULL, " ");
+        }
+    }
+}
+
+void mostrar_metricas_cpu_avancadas(int pid) {
+    printf("\n=== METRICAS AVANCADAS DE CPU ===\n");
+    
+    unsigned long voluntary, nonvoluntary;
+    int threads;
+    obter_context_switches_e_threads(pid, &voluntary, &nonvoluntary, &threads);
+    printf("Context Switches - Voluntary: %lu, Non-voluntary: %lu\n", voluntary, nonvoluntary);
+    printf("Threads: %d\n", threads);
+    
+    unsigned long syscalls_read, syscalls_write, io_wait_ticks;
+    obter_syscalls_e_iowait(pid, &syscalls_read, &syscalls_write, &io_wait_ticks);
+    printf("Syscalls - Read: %lu, Write: %lu\n", syscalls_read, syscalls_write);
+    printf("I/O Wait Time: %.1f seconds\n", io_wait_ticks / (double)sysconf(_SC_CLK_TCK));
+    
+    int priority, nice_value;
+    obter_prioridade_nice(pid, &priority, &nice_value);
+    printf("Priority: %d, Nice: %d\n", priority, nice_value);
+}

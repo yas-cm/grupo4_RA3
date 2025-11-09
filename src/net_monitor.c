@@ -50,45 +50,6 @@ NetMetrics obter_metricas_rede(int pid) {
     return metrics;
 }
 
-// Método alternativo simplificado - SEM DT_LNK
-NetMetrics obter_metricas_rede_por_sockets(int pid) {
-    NetMetrics metrics = {0, 0, 0, 0};
-    char caminho[256];
-    DIR *dir;
-    struct dirent *entry;
-    
-    // Buscar na pasta /proc/[pid]/fd para encontrar sockets
-    sprintf(caminho, "/proc/%d/fd", pid);
-    dir = opendir(caminho);
-    
-    if (dir == NULL) {
-        return metrics;
-    }
-    
-    while ((entry = readdir(dir)) != NULL) {
-        // Ignorar diretórios . e ..
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-            continue;
-        }
-        
-        char link_path[512], target[512];
-        sprintf(link_path, "/proc/%d/fd/%s", pid, entry->d_name);
-        
-        ssize_t len = readlink(link_path, target, sizeof(target)-1);
-        if (len != -1) {
-            target[len] = '\0';
-            // Verificar se é um socket pela string do target
-            if (strncmp(target, "socket:", 7) == 0) {
-                // É um socket - em uma implementação completa,
-                // buscaríamos estatísticas específicas do socket
-            }
-        }
-    }
-    
-    closedir(dir);
-    return metrics;
-}
-
 void calcular_taxas_rede(NetMetrics *antes, NetMetrics *depois, int intervalo, 
                         double *rx_rate, double *tx_rate, double *rx_packets_rate, double *tx_packets_rate) {
     if (intervalo > 0) {
@@ -99,4 +60,72 @@ void calcular_taxas_rede(NetMetrics *antes, NetMetrics *depois, int intervalo,
     } else {
         *rx_rate = *tx_rate = *rx_packets_rate = *tx_packets_rate = 0;
     }
+}
+
+void formatar_taxa_rede(double taxa, char *buffer, size_t size) {
+    if (taxa < 1024) {
+        snprintf(buffer, size, "%.0fB/s", taxa);
+    } else if (taxa < 1024 * 1024) {
+        snprintf(buffer, size, "%.1fKB/s", taxa / 1024);
+    } else {
+        snprintf(buffer, size, "%.1fMB/s", taxa / (1024 * 1024));
+    }
+}
+
+NetworkConnections obter_conexoes_rede(int pid) {
+    NetworkConnections conns = {0, 0, 0, 0, 0, 0};
+    char caminho[256];
+    FILE *arquivo;
+    char linha[512];
+    
+    // TCP connections
+    sprintf(caminho, "/proc/%d/net/tcp", pid);
+    arquivo = fopen(caminho, "r");
+    if (arquivo) {
+        // Pular cabeçalho
+        fgets(linha, sizeof(linha), arquivo);
+        
+        while (fgets(linha, sizeof(linha), arquivo)) {
+            char state[16];
+            if (sscanf(linha, "%*d: %*64[0-9A-Fa-f]:%*x %*64[0-9A-Fa-f]:%*x %s", state) == 1) {
+                conns.tcp_connections++;
+                if (strcmp(state, "0A") == 0) conns.tcp_listen++;
+                else if (strcmp(state, "01") == 0) conns.tcp_established++;
+                else if (strcmp(state, "08") == 0) conns.tcp_close_wait++;
+                else if (strcmp(state, "06") == 0) conns.tcp_time_wait++;
+            }
+        }
+        fclose(arquivo);
+    }
+    
+    // UDP connections (simplificado)
+    sprintf(caminho, "/proc/%d/net/udp", pid);
+    arquivo = fopen(caminho, "r");
+    if (arquivo) {
+        // Pular cabeçalho
+        fgets(linha, sizeof(linha), arquivo);
+        
+        while (fgets(linha, sizeof(linha), arquivo)) {
+            conns.udp_connections++;
+        }
+        fclose(arquivo);
+    }
+    
+    return conns;
+}
+
+void mostrar_metricas_rede_avancadas(int pid) {
+    printf("\n=== METRICAS AVANCADAS DE REDE ===\n");
+    
+    NetMetrics net = obter_metricas_rede(pid);
+    printf("Bytes recebidos: %lu (%.2f MB)\n", net.rx_bytes, net.rx_bytes / (1024.0 * 1024.0));
+    printf("Bytes enviados: %lu (%.2f MB)\n", net.tx_bytes, net.tx_bytes / (1024.0 * 1024.0));
+    printf("Pacotes recebidos: %lu\n", net.packets_rx);
+    printf("Pacotes enviados: %lu\n", net.packets_tx);
+    
+    NetworkConnections conns = obter_conexoes_rede(pid);
+    printf("Conexões TCP: %d\n", conns.tcp_connections);
+    printf("  - Listen: %d, Established: %d\n", conns.tcp_listen, conns.tcp_established);
+    printf("  - Close Wait: %d, Time Wait: %d\n", conns.tcp_close_wait, conns.tcp_time_wait);
+    printf("Conexões UDP: %d\n", conns.udp_connections);
 }

@@ -1,26 +1,28 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Iinclude
-TARGET = monitor
+CFLAGS = -Wall -Wextra -std=c99 -I./include
+SRCDIR = src
+SOURCES = $(SRCDIR)/main.c $(SRCDIR)/cpu_monitor.c $(SRCDIR)/memory_monitor.c $(SRCDIR)/io_monitor.c $(SRCDIR)/net_monitor.c
+TARGET = resource-monitor
+OBJS = $(SOURCES:.c=.o)
 
-SOURCES = src/main.c src/cpu_monitor.c src/memory_monitor.c src/io_monitor.c src/net_monitor.c
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
 
-$(TARGET): $(SOURCES)
-	$(CC) $(CFLAGS) -o $(TARGET) $(SOURCES)
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(TARGET) src/*.o
+	rm -f $(OBJS) $(TARGET)
 
-run: $(TARGET)
-	./$(TARGET) --pids 1,1234
+install: $(TARGET)
+	cp $(TARGET) /usr/local/bin/
 
-debug: CFLAGS += -g
-debug: $(TARGET)
+test: $(TARGET)
+	@echo "=== TESTANDO COM PROCESSO ATUAL ==="
+	./$(TARGET) --pid $$ --detalhes
 
-help:
-	@echo "Comandos:"
-	@echo "  make      - Compila"
-	@echo "  make run  - Compila e executa"
-	@echo "  make clean - Limpa"
-	@echo "  make debug - Compila com debug"
+test-multiple: $(TARGET)
+	@echo "=== TESTANDO MULTIPLOS PROCESSOS ==="
+	./$(TARGET) --pids 1,$$ --intervalo 2
 
-.PHONY: clean run debug help
+.PHONY: clean install test test-multiple
