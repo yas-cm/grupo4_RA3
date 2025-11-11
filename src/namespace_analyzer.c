@@ -115,3 +115,124 @@ void comparar_namespaces(const char* pids_str) {
 
     free(pids_copy);
 }
+
+/**
+ * TAREFA 3: Encontra todos os processos que compartilham um namespace específico
+ * com um processo de referência.
+ */
+void encontrar_processos_no_namespace(int pid_referencia, const char* tipo_ns) {
+    char id_alvo[256];
+    if (!obter_id_namespace(pid_referencia, tipo_ns, id_alvo, sizeof(id_alvo))) {
+        fprintf(stderr, "Erro: Não foi possível obter o namespace '%s' do PID de referência %d. ", tipo_ns, pid_referencia);
+        perror("Motivo");
+        return;
+    }
+
+    printf("Procurando por processos no namespace '%s' com ID: %s\n", tipo_ns, id_alvo);
+    printf("PIDs encontrados:\n");
+
+    DIR *proc_dir = opendir("/proc");
+    if (proc_dir == NULL) {
+        perror("Erro ao abrir /proc");
+        return;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(proc_dir)) != NULL) {
+        int pid_atual = atoi(entry->d_name);
+        if (pid_atual > 0) { // Verifica se o nome do diretório é um número (PID)
+            char id_atual[256];
+            if (obter_id_namespace(pid_atual, tipo_ns, id_atual, sizeof(id_atual))) {
+                if (strcmp(id_alvo, id_atual) == 0) {
+                    printf("- %d\n", pid_atual);
+                }
+            }
+        }
+    }
+
+    closedir(proc_dir);
+}
+
+// --- LÓGICA PARA A TAREFA 4 ---
+
+// Estrutura para armazenar as estatísticas de um único namespace
+typedef struct {
+    char ns_id[128];
+    int process_count;
+} NamespaceStat;
+
+// Função auxiliar para adicionar ou atualizar uma estatística em um array dinâmico
+static void add_or_update_stat(NamespaceStat **stats_array, int *count, const char *id) {
+    // Procura se o ID já existe
+    for (int i = 0; i < *count; i++) {
+        if (strcmp((*stats_array)[i].ns_id, id) == 0) {
+            (*stats_array)[i].process_count++;
+            return;
+        }
+    }
+
+    // Se não encontrou, adiciona um novo
+    *stats_array = realloc(*stats_array, (*count + 1) * sizeof(NamespaceStat));
+    if (*stats_array == NULL) {
+        perror("Falha ao realocar memória para estatísticas");
+        exit(1);
+    }
+    
+    strncpy((*stats_array)[*count].ns_id, id, sizeof((*stats_array)[*count].ns_id) - 1);
+    (*stats_array)[*count].ns_id[sizeof((*stats_array)[*count].ns_id) - 1] = '\0';
+    (*stats_array)[*count].process_count = 1;
+    (*count)++;
+}
+
+
+/**
+ * TAREFA 4: Gera um relatório de todos os namespaces ativos no sistema e
+ * conta quantos processos pertencem a cada um.
+ */
+void gerar_relatorio_namespaces_sistema(void) {
+    printf("Gerando relatório de namespaces do sistema... (pode levar um momento)\n");
+
+    const char* ns_types[] = {"cgroup", "ipc", "mnt", "net", "pid", "user", "uts"};
+    int num_ns_types = sizeof(ns_types) / sizeof(ns_types[0]);
+
+    // Cria um array de stats para cada tipo de namespace
+    NamespaceStat *stats[num_ns_types];
+    int counts[num_ns_types];
+    for(int i=0; i<num_ns_types; ++i) {
+        stats[i] = NULL;
+        counts[i] = 0;
+    }
+
+    DIR *proc_dir = opendir("/proc");
+    if (proc_dir == NULL) {
+        perror("Erro ao abrir /proc. Execute com sudo.");
+        return;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(proc_dir)) != NULL) {
+        int pid = atoi(entry->d_name);
+        if (pid > 0) {
+            for (int i = 0; i < num_ns_types; i++) {
+                char id_atual[256];
+                if (obter_id_namespace(pid, ns_types[i], id_atual, sizeof(id_atual))) {
+                    add_or_update_stat(&stats[i], &counts[i], id_atual);
+                }
+            }
+        }
+    }
+    closedir(proc_dir);
+
+    // Imprime o relatório
+    for (int i = 0; i < num_ns_types; i++) {
+        printf("\n--- Relatório para Namespace '%s' ---\n", ns_types[i]);
+        if (counts[i] == 0) {
+            printf("Nenhum namespace encontrado ou acessível.\n");
+        }
+        for (int j = 0; j < counts[i]; j++) {
+            printf("  ID: %-25s | Processos: %d\n", stats[i][j].ns_id, stats[i][j].process_count);
+        }
+        // Libera a memória alocada para este tipo de namespace
+        free(stats[i]);
+    }
+}

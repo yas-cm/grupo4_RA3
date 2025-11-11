@@ -198,7 +198,6 @@ int main(int argc, char *argv[]) {
     int modo_verbose = 0;
     char *csv_filename = NULL;
     
-    // ATUALIZADO: Mensagem de ajuda com as novas opções
     if (argc < 2 || strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
         printf("=== RESOURCE MONITOR - Monitoramento e Análise de Processos Linux ===\n\n"
                "USO:\n"
@@ -215,14 +214,15 @@ int main(int argc, char *argv[]) {
                "  --pid PID          Exibe um snapshot único e detalhado de um processo\n"
                "  --avancado         (Use com --pid) Inclui ainda mais detalhes no snapshot\n"
                "  --list-ns PID      Lista todos os namespaces de um processo\n"
-               "  --compare-ns PIDS  Compara os namespaces entre dois processos (ex: 123,456)\n\n"
+               "  --compare-ns PIDS  Compara os namespaces entre dois processos (ex: 123,456)\n"
+               "  --find-ns PID TIPO Encontra processos no mesmo namespace (ex: 123 net)\n"
+               "  --report-ns        Gera um relatório de todos os namespaces do sistema\n\n"
                "GERAL:\n"
                "  --help, -h         Mostrar esta ajuda\n", 
                argv[0], argv[0], argv[0], argv[0]);
         return 0;
     }
 
-    // ATUALIZADO: Lógica de parsing de argumentos
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--pids") == 0 && i + 1 < argc) { pids = parse_pids_argumento(argv[i + 1], &num_pids); i++; } 
         else if (strcmp(argv[i], "--pid") == 0 && i + 1 < argc) { modo_individual = 1; pid_individual = atoi(argv[i + 1]); i++; } 
@@ -230,7 +230,7 @@ int main(int argc, char *argv[]) {
         else if (strcmp(argv[i], "--verbose") == 0 || strcmp(argv[i], "-v") == 0) { modo_verbose = 1; } 
         else if (strcmp(argv[i], "--avancado") == 0) { modo_avancado = 1; } 
         else if (strcmp(argv[i], "--csv") == 0 && i + 1 < argc) { csv_filename = argv[i + 1]; i++; }
-        // NOVO: Lógica para as funcionalidades de namespace
+        
         else if (strcmp(argv[i], "--list-ns") == 0 && i + 1 < argc) {
             int pid_ns = atoi(argv[i+1]);
             if (pid_ns > 0) {
@@ -243,6 +243,17 @@ int main(int argc, char *argv[]) {
         else if (strcmp(argv[i], "--compare-ns") == 0 && i + 1 < argc) {
             comparar_namespaces(argv[i+1]);
             return 0; // Termina o programa após a análise
+        }
+        else if (strcmp(argv[i], "--find-ns") == 0 && i + 2 < argc) {
+            int pid_ref = atoi(argv[i+1]);
+            const char* ns_type = argv[i+2];
+            encontrar_processos_no_namespace(pid_ref, ns_type);
+            return 0;
+        }
+        // NOVO: Lógica para Tarefa 4
+        else if (strcmp(argv[i], "--report-ns") == 0) {
+            gerar_relatorio_namespaces_sistema();
+            return 0;
         }
     }
 
