@@ -1,20 +1,14 @@
-// Em src/main.c (VERSÃO COMPLETA E CORRIGIDA COM TRATAMENTO DE SINAL)
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
-#include <signal.h> // NOVO: Adicionado para tratamento de sinais (Ctrl+C)
+#include <signal.h> 
 #include "../include/monitor.h"
 
-// NOVO: Variável global para controlar o loop de monitoramento.
-// 'volatile sig_atomic_t' é o tipo seguro para ser usado dentro de um signal handler.
 volatile sig_atomic_t keep_running = 1;
 
-// NOVO: Handler para o sinal SIGINT (Ctrl+C).
-// Esta função será chamada quando o usuário pressionar Ctrl+C.
-// A única coisa que ela faz é mudar a flag para permitir que o loop principal termine.
+// Handler para o sinal SIGINT (Ctrl+C).
 void int_handler(int dummy) {
     (void)dummy; // Evita warning de 'parâmetro não utilizado'
     keep_running = 0;
@@ -44,7 +38,7 @@ int verificar_processo_existe(int pid) {
 }
 
 void mostrar_cabecalho(int num_pids, int intervalo) {
-    printf("===========  MONITORANDO %d PROCESSOS (Intervalo: %ds)  ===========\n", num_pids, intervalo);
+    printf("==============================  MONITORANDO %d PROCESSOS (Intervalo: %ds)  ==============================\n", num_pids, intervalo);
     printf("%-7s %-16s %-8s %-10s %-12s %-12s %-12s %-12s\n", "PID", "NOME", "CPU%", "MEMORIA", "I/O LEITURA", "I/O ESCRITA", "REDE RX", "REDE TX");
     printf("----------------------------------------------------------------------------------------------------------\n");
 }
@@ -83,7 +77,7 @@ void mostrar_metricas_processo(ProcessMetrics *metrics) {
     if (strcmp(metrics->nome, "TERMINADO") == 0 || strcmp(metrics->nome, "NAO ENCONTRADO") == 0) {
         printf("%-7d %-16s %-8s %-10s %-12s %-12s %-12s %-12s\n", metrics->pid, metrics->nome, "N/A", "N/A", "N/A", "N/A", "N/A", "N/A");
     } else {
-        printf("%-7d %-16.16s %-7.1f%% %-9.1fMB %-12s %-12s %-12s %-12s\n", metrics->pid, metrics->nome, metrics->cpu_usage, metrics->memoria_mb, read_str, write_str, net_rx_str, net_tx_str);
+        printf("%-7d %-16.16s %-7.1f%%  %-9.1fMB %-12s %-12s %-12s %-12s\n", metrics->pid, metrics->nome, metrics->cpu_usage, metrics->memoria_mb, read_str, write_str, net_rx_str, net_tx_str);
     }
 }
 
@@ -193,7 +187,6 @@ void mostrar_metricas_avancadas(int pid) {
 }
 
 int main(int argc, char *argv[]) {
-    // NOVO: Registra a função 'int_handler' para ser chamada ao receber o sinal SIGINT (Ctrl+C).
     signal(SIGINT, int_handler);
 
     int *pids = NULL;
@@ -204,19 +197,32 @@ int main(int argc, char *argv[]) {
     int modo_avancado = 0;
     int modo_verbose = 0;
     char *csv_filename = NULL;
+    
+    // ATUALIZADO: Mensagem de ajuda com as novas opções
     if (argc < 2 || strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
-        printf("=== RESOURCE MONITOR - Monitoramento de Processos Linux ===\n\n"
-               "USO:\n  %s --pids PID1,PID2,... [OPCOES]\n  %s --pid PID [OPCOES]\n\n"
-               "OPCOES:\n"
+        printf("=== RESOURCE MONITOR - Monitoramento e Análise de Processos Linux ===\n\n"
+               "USO:\n"
+               "  %s --pids PID1,PID2,... [OPCOES]\n"
+               "  %s --pid PID [OPCOES]\n"
+               "  %s --list-ns PID\n"
+               "  %s --compare-ns PID1,PID2\n\n"
+               "OPCOES DE MONITORAMENTO:\n"
                "  --pids LISTA       Lista de PIDs para monitoramento contínuo\n"
                "  --intervalo N      Intervalo de atualização em segundos (padrao: 2)\n"
                "  --verbose, -v      Exibe todas as métricas detalhadas no modo contínuo\n"
-               "  --csv ARQUIVO      Loga continuamente todas as métricas em um arquivo CSV\n"
+               "  --csv ARQUIVO      Loga continuamente todas as métricas em um arquivo CSV\n\n"
+               "OPCOES DE ANALISE (SNAPSHOT):\n"
                "  --pid PID          Exibe um snapshot único e detalhado de um processo\n"
                "  --avancado         (Use com --pid) Inclui ainda mais detalhes no snapshot\n"
-               "  --help, -h         Mostrar esta ajuda\n", argv[0], argv[0]);
+               "  --list-ns PID      Lista todos os namespaces de um processo\n"
+               "  --compare-ns PIDS  Compara os namespaces entre dois processos (ex: 123,456)\n\n"
+               "GERAL:\n"
+               "  --help, -h         Mostrar esta ajuda\n", 
+               argv[0], argv[0], argv[0], argv[0]);
         return 0;
     }
+
+    // ATUALIZADO: Lógica de parsing de argumentos
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--pids") == 0 && i + 1 < argc) { pids = parse_pids_argumento(argv[i + 1], &num_pids); i++; } 
         else if (strcmp(argv[i], "--pid") == 0 && i + 1 < argc) { modo_individual = 1; pid_individual = atoi(argv[i + 1]); i++; } 
@@ -224,7 +230,22 @@ int main(int argc, char *argv[]) {
         else if (strcmp(argv[i], "--verbose") == 0 || strcmp(argv[i], "-v") == 0) { modo_verbose = 1; } 
         else if (strcmp(argv[i], "--avancado") == 0) { modo_avancado = 1; } 
         else if (strcmp(argv[i], "--csv") == 0 && i + 1 < argc) { csv_filename = argv[i + 1]; i++; }
+        // NOVO: Lógica para as funcionalidades de namespace
+        else if (strcmp(argv[i], "--list-ns") == 0 && i + 1 < argc) {
+            int pid_ns = atoi(argv[i+1]);
+            if (pid_ns > 0) {
+                listar_namespaces_processo(pid_ns);
+            } else {
+                fprintf(stderr, "Erro: PID inválido para --list-ns.\n");
+            }
+            return 0; // Termina o programa após a análise
+        }
+        else if (strcmp(argv[i], "--compare-ns") == 0 && i + 1 < argc) {
+            comparar_namespaces(argv[i+1]);
+            return 0; // Termina o programa após a análise
+        }
     }
+
     if (modo_individual) {
         if (!verificar_processo_existe(pid_individual)) { fprintf(stderr, "Erro: Processo %d nao encontrado!\n", pid_individual); return 1; }
         if (modo_avancado) { mostrar_metricas_avancadas(pid_individual); } 
@@ -232,14 +253,11 @@ int main(int argc, char *argv[]) {
     } else if (num_pids > 0) {
         monitorar_multiplos_processos(pids, num_pids, intervalo, modo_verbose, csv_filename);
     } else {
-        fprintf(stderr, "Erro: Nenhum PID especificado para monitoramento. Use --pids PID1,...\n");
-        // NOVO: Mesmo em caso de erro, se pids foi alocado (caso inválido), deve ser liberado.
+        fprintf(stderr, "Erro: Nenhuma ação especificada. Use --help para ver as opções.\n");
         if (pids != NULL) { free(pids); }
         return 1;
     }
 
-    // ALTERADO: Este código agora será alcançado após o monitoramento contínuo terminar,
-    // garantindo que a memória dos PIDs também seja liberada.
     if (pids != NULL) {
         free(pids);
     }

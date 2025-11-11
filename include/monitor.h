@@ -73,7 +73,6 @@ typedef struct {
 
 
 // --- PROTÓTIPOS DE FUNÇÕES ---
-// (O resto do arquivo continua igual)
 
 void calcular_cpu_usage(ProcessMetrics *metrics);
 double calcular_uso_memoria_mb(int pid);
@@ -97,5 +96,9 @@ void mostrar_metricas_memoria_avancadas(int pid);
 void mostrar_metricas_io_avancadas(int pid);
 void mostrar_metricas_rede_avancadas(int pid);
 void mostrar_metricas_avancadas(int pid);
+
+// --- PROTÓTIPOS - Namespace Analyzer ---
+void listar_namespaces_processo(int pid);
+void comparar_namespaces(const char* pids_str);
 
 #endif // MONITOR_H

@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "unistd.h": "c",
-        "monitor.h": "c"
+        "monitor.h": "c",
+        "stdlib.h": "c"
     }
 }
