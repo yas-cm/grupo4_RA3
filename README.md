@@ -39,7 +39,7 @@ O `Resource Profiler` já conta com um conjunto robusto de funcionalidades:
 
 Para compilar o projeto, você pode usar o GCC diretamente. Recomenda-se o uso das flags `-Wall` e `-Wextra` para garantir a qualidade do código.
 
-1.  Clone o repositório (se aplicável).
+1.  Clone o repositório.
 2.  Navegue até a raiz do projeto.
 3.  Execute o comando de compilação:
 

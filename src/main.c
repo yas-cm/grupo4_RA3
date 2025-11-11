@@ -1,11 +1,25 @@
-// Em src/main.c (VERSÃO COMPLETA E CORRIGIDA)
+// Em src/main.c (VERSÃO COMPLETA E CORRIGIDA COM TRATAMENTO DE SINAL)
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <signal.h> // NOVO: Adicionado para tratamento de sinais (Ctrl+C)
 #include "../include/monitor.h"
+
+// NOVO: Variável global para controlar o loop de monitoramento.
+// 'volatile sig_atomic_t' é o tipo seguro para ser usado dentro de um signal handler.
+volatile sig_atomic_t keep_running = 1;
+
+// NOVO: Handler para o sinal SIGINT (Ctrl+C).
+// Esta função será chamada quando o usuário pressionar Ctrl+C.
+// A única coisa que ela faz é mudar a flag para permitir que o loop principal termine.
+void int_handler(int dummy) {
+    (void)dummy; // Evita warning de 'parâmetro não utilizado'
+    keep_running = 0;
+}
+
 
 int* parse_pids_argumento(const char *pids_str, int *num_pids) {
     if (!pids_str || strlen(pids_str) == 0) { *num_pids = 0; return NULL; }
@@ -123,7 +137,10 @@ void monitorar_multiplos_processos(int *pids, int num_pids, int intervalo, int m
     }
     if (csv_filename) { remove(csv_filename); }
     int iteracao = 0;
-    while (1) {
+
+    // ALTERADO: O loop agora verifica a flag 'keep_running'. Ele vai parar quando
+    // a flag se tornar 0 (após o usuário pressionar Ctrl+C).
+    while (keep_running) {
         system("clear");
         for (int i = 0; i < num_pids; i++) {
              if (strcmp(metrics[i].nome, "NAO ENCONTRADO") != 0) {
@@ -141,9 +158,16 @@ void monitorar_multiplos_processos(int *pids, int num_pids, int intervalo, int m
         printf("\n[Ctrl+C para sair]");
         if (csv_filename) { printf(" | Logando em: %s", csv_filename); }
         fflush(stdout);
+
+        // ALTERADO: A função sleep() pode ser interrompida por um sinal. 
+        // Em vez de um sleep complexo, vamos manter simples. Se o sinal for recebido,
+        // o loop vai parar na próxima verificação de 'keep_running'.
         sleep(intervalo);
         iteracao++;
     }
+    
+    // NOVO: Este código agora é executado quando o loop termina, liberando a memória.
+    printf("\n\nSinal de interrupção recebido. Liberando memória e saindo...\n");
     free(metrics);
 }
 
@@ -169,6 +193,9 @@ void mostrar_metricas_avancadas(int pid) {
 }
 
 int main(int argc, char *argv[]) {
+    // NOVO: Registra a função 'int_handler' para ser chamada ao receber o sinal SIGINT (Ctrl+C).
+    signal(SIGINT, int_handler);
+
     int *pids = NULL;
     int num_pids = 0;
     int intervalo = 2;
@@ -206,8 +233,15 @@ int main(int argc, char *argv[]) {
         monitorar_multiplos_processos(pids, num_pids, intervalo, modo_verbose, csv_filename);
     } else {
         fprintf(stderr, "Erro: Nenhum PID especificado para monitoramento. Use --pids PID1,...\n");
+        // NOVO: Mesmo em caso de erro, se pids foi alocado (caso inválido), deve ser liberado.
+        if (pids != NULL) { free(pids); }
         return 1;
     }
-    if (pids != NULL) { free(pids); }
+
+    // ALTERADO: Este código agora será alcançado após o monitoramento contínuo terminar,
+    // garantindo que a memória dos PIDs também seja liberada.
+    if (pids != NULL) {
+        free(pids);
+    }
     return 0;
 }
