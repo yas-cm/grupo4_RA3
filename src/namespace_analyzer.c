@@ -17,6 +17,11 @@ static int get_ns_id(int pid, const char* ns_type, char* buffer, size_t size) {
         return 0; 
     }
 
+    // Verificação de segurança: checa se o buffer foi grande o suficiente.
+    if ((size_t)len >= size - 1) {
+        fprintf(stderr, "Aviso: Buffer pode ter sido truncado para PID %d, ns '%s'.\n", pid, ns_type);
+    }
+
     buffer[len] = '\0';
     return 1;
 }
@@ -51,20 +56,24 @@ void listar_namespaces_processo(int pid) {
 
 void comparar_namespaces(const char* pids_str) {
     char* pids_copy = strdup(pids_str);
-    if (pids_copy == NULL) return;
+    if (pids_copy == NULL) {
+        perror("Falha ao alocar memória");
+        return;
+    }
 
-    const char* pid1_str = strtok(pids_copy, ",");
-    const char* pid2_str = strtok(NULL, ",");
-
-    if (pid1_str == NULL || pid2_str == NULL) {
+    char *virgula = strchr(pids_copy, ',');
+    if (virgula == NULL) {
         fprintf(stderr, "Erro: Formato inválido. Use --compare-ns PID1,PID2\n");
         free(pids_copy);
         return;
     }
 
+    *virgula = '\0'; // Separa a string em duas no lugar da vírgula
+    const char* pid1_str = pids_copy;
+    const char* pid2_str = virgula + 1;
+
     int pid1 = atoi(pid1_str);
     int pid2 = atoi(pid2_str);
-    free(pids_copy);
 
     const char* ns_types[] = {"cgroup", "ipc", "mnt", "net", "pid", "user", "uts"};
     int num_ns_types = sizeof(ns_types) / sizeof(ns_types[0]);
@@ -90,6 +99,7 @@ void comparar_namespaces(const char* pids_str) {
             printf("%-8s | %-15s | PID %d: %s\n", "", "", pid2, id2);
         }
     }
+    free(pids_copy);
 }
 
 void encontrar_processos_no_namespace(int pid_referencia, const char* tipo_ns) {

@@ -23,6 +23,17 @@ void gerar_relatorio_cgroup(const char *nome_grupo);
 int criar_cgroup(const char *nome_grupo);
 
 /**
+ * @brief Remove um cgroup existente.
+ *
+ * O cgroup deve estar vazio (não conter processos ou subgrupos) para ser removido.
+ * Requer privilégios de root.
+ *
+ * @param nome_grupo O nome do cgroup a ser removido.
+ * @return 0 em caso de sucesso, -1 em caso de erro.
+ */
+int remover_cgroup(const char *nome_grupo);
+
+/**
  * @brief Move um processo para um cgroup específico em todos os controladores.
  *
  * Escreve o PID do processo no arquivo cgroup.procs dos controladores.

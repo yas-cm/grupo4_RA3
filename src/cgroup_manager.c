@@ -61,21 +61,42 @@ int criar_cgroup(const char *nome_grupo) {
     char caminho[512];
     snprintf(caminho, sizeof(caminho), "%s/%s", CGROUP_V2_MOUNT, nome_grupo);
 
+    struct stat st;
+    if (stat(caminho, &st) == 0 && S_ISDIR(st.st_mode)) {
+        printf("Aviso: Cgroup '%s' já existe.\n", nome_grupo);
+        return 0;
+    }
+
     printf("Criando cgroup v2 '%s'...\n", nome_grupo);
-    if (mkdir(caminho, 0755) != 0 && errno != EEXIST) {
+    if (mkdir(caminho, 0755) != 0) {
         fprintf(stderr, "Erro ao criar diretório %s: ", caminho);
         perror(NULL);
         return -1;
     }
 
     // Em cgroups v2, precisamos habilitar os controladores para o subgrupo a partir do pai.
-    // Habilitamos cpu, memory e io no grupo raiz para que fiquem disponíveis para os filhos.
     if (escrever_no_arquivo_cgroup(NULL, "cgroup.subtree_control", "+cpu +memory +io") != 0) {
         // Isso pode falhar se já estiverem habilitados, o que não é um erro crítico.
         fprintf(stderr, "Aviso: Falha ao habilitar controladores na raiz. Podem já estar habilitados.\n");
     }
 
-    printf("Cgroup '%s' criado.\n", nome_grupo);
+    printf("Cgroup '%s' criado com sucesso.\n", nome_grupo);
+    return 0;
+}
+
+int remover_cgroup(const char *nome_grupo) {
+    char caminho[512];
+    snprintf(caminho, sizeof(caminho), "%s/%s", CGROUP_V2_MOUNT, nome_grupo);
+
+    printf("Removendo cgroup '%s'...\n", nome_grupo);
+    if (rmdir(caminho) != 0) {
+        fprintf(stderr, "Erro ao remover o cgroup '%s': ", nome_grupo);
+        perror(NULL);
+        fprintf(stderr, "Certifique-se de que o cgroup não contém processos e está vazio.\n");
+        return -1;
+    }
+    
+    printf("Cgroup '%s' removido com sucesso.\n", nome_grupo);
     return 0;
 }
 
@@ -95,7 +116,6 @@ int mover_processo_para_cgroup(int pid, const char *nome_grupo) {
 
 int aplicar_limite_cpu(const char *nome_grupo, long quota_us, long periodo_us) {
     char valor_str[128];
-    // O formato do arquivo cpu.max é "<quota> <periodo>"
     snprintf(valor_str, sizeof(valor_str), "%ld %ld", quota_us, periodo_us);
     
     if (escrever_no_arquivo_cgroup(nome_grupo, "cpu.max", valor_str) != 0) return -1;
@@ -130,7 +150,6 @@ int aplicar_limite_io_escrita(const char *nome_grupo, const char *dispositivo, l
     unsigned int minor_dev = minor(stat_buf.st_rdev);
     
     char valor_str[128];
-    // O formato do io.max é "<major>:<minor> wbps=<bytes_por_segundo>"
     snprintf(valor_str, sizeof(valor_str), "%u:%u wbps=%lld", major_dev, minor_dev, bps);
 
     if (escrever_no_arquivo_cgroup(nome_grupo, "io.max", valor_str) != 0) return -1;
@@ -159,21 +178,22 @@ void gerar_relatorio_cgroup(const char *nome_grupo) {
         printf("    - Ocorrências de Throttling: %d\n", nr_throttled);
         printf("    - Tempo Total em Throttling: %.3f segundos\n", throttled_usec / 1e6);
         free(cpu_stat_str);
+    } else {
+        printf("  Não foi possível ler estatísticas de CPU.\n");
     }
     char* cpu_max_str = ler_string_cgroup(nome_grupo, "cpu.max");
     printf("  Limite Configurado: %s", cpu_max_str ? cpu_max_str : "Ilimitado\n");
-    free(cpu_max_str);
-
+    if (cpu_max_str) free(cpu_max_str);
 
     // --- Memória ---
     printf("\n[Memória]\n");
     char* mem_current_str = ler_string_cgroup(nome_grupo, "memory.current");
     long long mem_current = mem_current_str ? atoll(mem_current_str) : 0;
-    free(mem_current_str);
+    if (mem_current_str) free(mem_current_str);
 
     char* mem_max_str = ler_string_cgroup(nome_grupo, "memory.max");
     long long mem_max = (mem_max_str && strcmp(mem_max_str, "max\n") != 0) ? atoll(mem_max_str) : -1;
-    free(mem_max_str);
+    if (mem_max_str) free(mem_max_str);
     
     printf("  Uso Atual: %.2f MB\n", mem_current / (1024.0 * 1024.0));
     if (mem_max < 0) {
@@ -201,7 +221,7 @@ void gerar_relatorio_cgroup(const char *nome_grupo) {
     } else {
         printf("  Nenhuma estatística de I/O disponível.\n");
     }
-    free(io_stat_str);
+    if (io_stat_str) free(io_stat_str);
 
     printf("\n-----------------------------------\n");
 }

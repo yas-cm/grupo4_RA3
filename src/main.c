@@ -189,7 +189,6 @@ void monitorar_processos(int *pids, int num_pids, int intervalo, int modo_verbos
     free(metrics);
 }
 
-// CORRIGIDO
 void mostrar_ajuda(const char* prog_name) {
     printf("Uso: %s [OPÇÕES]\n\n"
            "OPÇÕES DE MONITORAMENTO:\n"
@@ -204,10 +203,11 @@ void mostrar_ajuda(const char* prog_name) {
            "  --report-ns               Gera um relatório de todos os namespaces do sistema.\n\n"
            "OPÇÕES DE GERENCIAMENTO DE CGROUP (requer sudo):\n"
            "  --cg-create <grupo>       Cria um novo cgroup chamado <grupo>.\n"
+           "  --cg-delete <grupo>       Remove um cgroup (deve estar vazio).\n"
            "  --cg-move <pid> <grupo>   Move um processo para o <grupo>.\n"
            "  --cg-report <grupo>       Mostra um relatório de uso e limites do <grupo>.\n"
            "  --cg-set-mem <g> <MB>     Define o limite de memória em Megabytes para o grupo <g>.\n"
-           "  --cg-set-cpu <g> <%%>      Define o limite de CPU em porcentagem para o grupo <g>.\n" // <-- AQUI ESTÁ A CORREÇÃO
+           "  --cg-set-cpu <g> <%%>      Define o limite de CPU em porcentagem para o grupo <g>.\n"
            "  --cg-set-io <g> <d> <bps> Define o limite de escrita de I/O em Bytes/seg para o\n"
            "                            dispositivo <d> (ex: /dev/sda) no grupo <g>.\n\n"
            "GERAL:\n"
@@ -256,6 +256,9 @@ int main(int argc, char *argv[]) {
             acao_executada = 1;
         } else if (strcmp(argv[i], "--cg-create") == 0 && i + 1 < argc) {
             criar_cgroup(argv[++i]);
+            acao_executada = 1;
+        } else if (strcmp(argv[i], "--cg-delete") == 0 && i + 1 < argc) {
+            remover_cgroup(argv[++i]);
             acao_executada = 1;
         } else if (strcmp(argv[i], "--cg-move") == 0 && i + 2 < argc) {
             mover_processo_para_cgroup(atoi(argv[i+1]), argv[i+2]);

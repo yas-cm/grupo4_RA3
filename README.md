@@ -190,6 +190,9 @@ sudo killall stress
 
 # Remove o diretório do cgroup
 sudo rmdir /sys/fs/cgroup/meu-app
+
+# Remova o cgroup (só funciona se estiver vazio)
+sudo ./resource_monitor --cg-delete meu-app
 ```
 
 ### Estrutura do projeto
