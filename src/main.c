@@ -6,6 +6,7 @@
 #include <signal.h>
 #include "monitor.h"
 #include "namespace.h"
+#include "cgroup_manager.h"
 
 #define MAX_PIDS 128
 
@@ -188,20 +189,29 @@ void monitorar_processos(int *pids, int num_pids, int intervalo, int modo_verbos
     free(metrics);
 }
 
+// CORRIGIDO
 void mostrar_ajuda(const char* prog_name) {
     printf("Uso: %s [OPÇÕES]\n\n"
            "OPÇÕES DE MONITORAMENTO:\n"
-           "  --pids PID1,PID2,...  Lista de PIDs para monitoramento contínuo (obrigatório para monitorar).\n"
-           "  --intervalo N         Intervalo de atualização em segundos (padrão: 2).\n"
-           "  --verbose, -v         Exibe todas as métricas detalhadas no modo contínuo.\n"
-           "  --csv ARQUIVO         Loga continuamente todas as métricas em um arquivo CSV.\n\n"
+           "  --pids PID1,PID2,...      Lista de PIDs para monitoramento contínuo.\n"
+           "  --intervalo N             Intervalo de atualização em segundos (padrão: 2).\n"
+           "  --verbose, -v             Exibe todas as métricas detalhadas no modo contínuo.\n"
+           "  --csv ARQUIVO             Loga continuamente todas as métricas em um arquivo CSV.\n\n"
            "OPÇÕES DE ANÁLISE DE NAMESPACE:\n"
-           "  --list-ns PID         Lista todos os namespaces de um processo.\n"
-           "  --compare-ns PIDS     Compara os namespaces entre dois processos (ex: 123,456).\n"
-           "  --find-ns PID TIPO    Encontra processos no mesmo namespace (ex: 123 net).\n"
-           "  --report-ns           Gera um relatório de todos os namespaces do sistema.\n\n"
+           "  --list-ns PID             Lista todos os namespaces de um processo.\n"
+           "  --compare-ns PIDS         Compara os namespaces entre dois processos (ex: 123,456).\n"
+           "  --find-ns PID TIPO        Encontra processos no mesmo namespace (ex: 1 net).\n"
+           "  --report-ns               Gera um relatório de todos os namespaces do sistema.\n\n"
+           "OPÇÕES DE GERENCIAMENTO DE CGROUP (requer sudo):\n"
+           "  --cg-create <grupo>       Cria um novo cgroup chamado <grupo>.\n"
+           "  --cg-move <pid> <grupo>   Move um processo para o <grupo>.\n"
+           "  --cg-report <grupo>       Mostra um relatório de uso e limites do <grupo>.\n"
+           "  --cg-set-mem <g> <MB>     Define o limite de memória em Megabytes para o grupo <g>.\n"
+           "  --cg-set-cpu <g> <%%>      Define o limite de CPU em porcentagem para o grupo <g>.\n" // <-- AQUI ESTÁ A CORREÇÃO
+           "  --cg-set-io <g> <d> <bps> Define o limite de escrita de I/O em Bytes/seg para o\n"
+           "                            dispositivo <d> (ex: /dev/sda) no grupo <g>.\n\n"
            "GERAL:\n"
-           "  --help, -h            Mostra esta ajuda.\n",
+           "  --help, -h                Mostra esta ajuda.\n",
            prog_name);
 }
 
@@ -217,6 +227,7 @@ int main(int argc, char *argv[]) {
     int intervalo = 2;
     int modo_verbose = 0;
     char *csv_filename = NULL;
+    int acao_executada = 0;
     
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
@@ -232,17 +243,43 @@ int main(int argc, char *argv[]) {
             csv_filename = argv[++i];
         } else if (strcmp(argv[i], "--list-ns") == 0 && i + 1 < argc) {
             listar_namespaces_processo(atoi(argv[++i]));
-            return 0;
+            acao_executada = 1;
         } else if (strcmp(argv[i], "--compare-ns") == 0 && i + 1 < argc) {
             comparar_namespaces(argv[++i]);
-            return 0;
+            acao_executada = 1;
         } else if (strcmp(argv[i], "--find-ns") == 0 && i + 2 < argc) {
             encontrar_processos_no_namespace(atoi(argv[i+1]), argv[i+2]);
             i += 2;
-            return 0;
+            acao_executada = 1;
         } else if (strcmp(argv[i], "--report-ns") == 0) {
             gerar_relatorio_namespaces_sistema();
-            return 0;
+            acao_executada = 1;
+        } else if (strcmp(argv[i], "--cg-create") == 0 && i + 1 < argc) {
+            criar_cgroup(argv[++i]);
+            acao_executada = 1;
+        } else if (strcmp(argv[i], "--cg-move") == 0 && i + 2 < argc) {
+            mover_processo_para_cgroup(atoi(argv[i+1]), argv[i+2]);
+            i += 2;
+            acao_executada = 1;
+        } else if (strcmp(argv[i], "--cg-report") == 0 && i + 1 < argc) {
+            gerar_relatorio_cgroup(argv[++i]);
+            acao_executada = 1;
+        } else if (strcmp(argv[i], "--cg-set-mem") == 0 && i + 2 < argc) {
+            long long limit_mb = atoll(argv[i+2]);
+            aplicar_limite_memoria(argv[i+1], limit_mb * 1024 * 1024);
+            i += 2;
+            acao_executada = 1;
+        } else if (strcmp(argv[i], "--cg-set-cpu") == 0 && i + 2 < argc) {
+            double percent = atof(argv[i+2]);
+            long periodo = 100000; // 100ms
+            long quota = (long)(periodo * (percent / 100.0));
+            aplicar_limite_cpu(argv[i+1], quota, periodo);
+            i += 2;
+            acao_executada = 1;
+        } else if (strcmp(argv[i], "--cg-set-io") == 0 && i + 3 < argc) {
+            aplicar_limite_io_escrita(argv[i+1], argv[i+2], atoll(argv[i+3]));
+            i += 3;
+            acao_executada = 1;
         }
     }
 
@@ -257,7 +294,7 @@ int main(int argc, char *argv[]) {
             free(pids);
             return 1;
         }
-    } else {
+    } else if (!acao_executada) {
         fprintf(stderr, "Nenhuma ação especificada. Use --pids para monitorar ou --help para ver outras opções.\n");
         return 1;
     }
