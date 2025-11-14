@@ -2,13 +2,13 @@
 
 > Sistema de monitoramento e análise de recursos para processos Linux, desenvolvido em C.
 
-Este projeto fornece uma ferramenta de linha de comando para monitorar em tempo real o consumo de recursos de processos Linux e analisar seu nível de isolamento através de namespaces. Os dados podem ser visualizados diretamente no terminal ou exportados para um arquivo CSV.
+Este projeto fornece uma ferramenta de linha de comando para monitorar em tempo real o consumo de recursos de processos Linux, analisar seu nível de isolamento através de namespaces e gerenciar a alocação de recursos via control groups (cgroups). Os dados podem ser visualizados diretamente no terminal ou exportados para um arquivo CSV.
 
 ## Status do Projeto
 
 - **Componente 1: Resource Profiler - ✅ Concluído**
 - **Componente 2: Namespace Analyzer - ✅ Concluído**
-- **Componente 3: Control Group Manager -** (Em desenvolvimento)
+- **Componente 3: Control Group Manager - ✅ Concluído**
 
 ## Funcionalidades Implementadas
 
@@ -35,9 +35,17 @@ O `Namespace Analyzer` oferece um conjunto de ferramentas para inspecionar o iso
 - **Busca por Processos:** Encontre todos os processos no sistema que pertencem a um namespace específico de um processo de referência.
 - **Relatório Geral do Sistema:** Gere um sumário de todos os namespaces ativos no sistema, mostrando quantos processos pertencem a cada um, oferecendo uma visão clara do nível de containerização.
 
+### Control Group Manager
+O `Control Group Manager` permite a manipulação e análise de cgroups v2 para limitação de recursos:
+
+- **Criação de Grupos:** Crie novos cgroups na hierarquia unificada do sistema.
+- **Aplicação de Limites:** Defina limites de uso de CPU (percentual) e Memória (em MB).
+- **Gerenciamento de Processos:** Mova processos para dentro e fora de cgroups.
+- **Relatórios Detalhados:** Gere relatórios que mostram o uso atual de recursos versus os limites configurados, incluindo estatísticas de *throttling* (quando o processo foi "freado" pelo kernel).
+
 ## Requisitos
 
-- **Sistema Operacional:** Linux (desenvolvido e testado em Ubuntu 24.04)
+- **Sistema Operacional:** Linux com **cgroups v2** (padrão em Ubuntu 22.04+, Fedora 31+, etc.)
 - **Compilador:** GCC 11.4.0+
 - **Bibliotecas:** Nenhuma dependência externa, apenas a `libc` padrão.
 
@@ -91,47 +99,20 @@ Veja a quais "universos" o processo init (PID 1) pertence:
 ```bash
 sudo ./resource_monitor --list-ns 1
 ```
-Saída esperada:
-```bash
-=== Namespaces do Processo 1 ===
-TIPO      : IDENTIFICADOR
-------------------------------------------
-net       : net:[4026531840]
-uts       : uts:[4026531838]
-ipc       : ipc:[4026531839]
-...
-```
 
 #### 2. Comparar o Isolamento de Dois Processos
-Compare o seu terminal com um processo do sistema (`systemd-logind`, PID ~900) para ver as diferenças de isolamento:
+Compare o seu terminal com um processo do sistema (`systemd-logind`):
 ```bash
 # Descubra o PID do seu terminal
 echo $$
 # Supondo que o PID seja 35210 e o do systemd-logind seja 989
 sudo ./resource_monitor --compare-ns 35210,989
 ```
-Saída esperada:
-```bash
-=== Comparando Namespaces: PID 35210 vs PID 989 ===
-TIPO     | STATUS          | IDENTIFICADOR(ES)
---------------------------------------------------------------------------
-cgroup   | COMPARTILHADO   | cgroup:[4026531835]
-mnt      | DIFERENTE       | mnt:[4026532217] (PID 35210) vs mnt:[4026531840] (PID 989)
-...```
 
 #### 3. Encontrar Processos em um Namespace
 Encontre todos os processos que compartilham o namespace de rede do processo init (PID 1):
 ```bash
 sudo ./resource_monitor --find-ns 1 net
-```
-Saída esperada:
-```bash
-Procurando por processos no namespace 'net' com ID: net:[4026531841]
-PIDs encontrados:
-- 1
-- 123
-- 456
-...
 ```
 
 #### 4. Gerar Relatório Completo de Namespaces
@@ -139,38 +120,95 @@ Obtenha um sumário de todos os namespaces do sistema (ótimo para ver container
 ```bash
 sudo ./resource_monitor --report-ns
 ```
-Saída esperada:
+
+### Exemplos de Uso - Gerenciamento de Cgroups
+
+*(Nota: Todas as operações de gerenciamento de cgroup exigem privilégios de root para modificar os arquivos de sistema em `/sys/fs/cgroup`. Use `sudo` para todos os comandos a seguir.)*
+
+Este fluxo de trabalho completo demonstra como criar um cgroup, aplicar limites de CPU, mover um processo para dentro dele e verificar se os limites estão sendo aplicados.
+
+#### 1. Crie um novo Cgroup
+Crie um grupo chamado `meu-app` para os controladores de CPU, Memória e I/O:```bash
+sudo ./resource_monitor --cg-create meu-app
+```
+
+#### 2. Aplique Limites de Recursos
+Defina um limite de 25% de uso de um núcleo de CPU para o grupo:
 ```bash
---- Relatório para Namespace 'net' ---
-  ID: net:[4026531841]         | Processos: 251
-  ID: net:[4026539878]         | Processos: 12
---- Relatório para Namespace 'pid' ---
-  ID: pid:[4026531838]         | Processos: 251
-  ID: pid:[4026539877]         | Processos: 12
-...```
+# Limita a 25% de CPU
+sudo ./resource_monitor --cg-set-cpu meu-app 25
+```
+
+#### 3. Inicie um Processo e Mova-o para o Cgroup
+Vamos usar a ferramenta `stress` para gerar carga. Primeiro, instale-a (`sudo apt install stress`).
+
+```bash
+# Inicie o stress em background para usar 1 núcleo de CPU
+stress --cpu 1 &
+
+# Descubra o PID do processo trabalhador do stress (geralmente o maior PID)
+pgrep stress
+
+# Supondo que o PID seja 18072, mova-o para o cgroup
+sudo ./resource_monitor --cg-move 18072 meu-app
+```
+
+#### 4. Verifique o Limite em Tempo Real
+Em outro terminal, use o próprio `resource_monitor` para observar o processo. Você verá que o uso de CPU dele estará cravado em ~25%.
+```bash
+./resource_monitor --pids 18072 --intervalo 1
+```
+Saída esperada:
+```
+PID     NOME                 CPU %     MEM (MB) ...
+---------------------------------------------------
+18072   stress               24.92%    0.4MB    ...
+```
+
+#### 5. Gere um Relatório Final
+Após deixar o processo rodar por alguns segundos, gere um relatório para ver as estatísticas acumuladas, incluindo quantas vezes o kernel precisou "frear" (throttle) o processo.
+```bash
+sudo ./resource_monitor --cg-report meu-app
+```
+Saída esperada:
+```
+--- Relatório do Cgroup v2: meu-app ---
+
+[CPU]
+    - Uso Total: 32.802 segundos
+    - Ocorrências de Throttling: 1311
+    - Tempo Total em Throttling: 98.241 segundos
+  Limite Configurado: 25000 100000
+...
+```
+
+#### 6. Limpeza
+Não se esqueça de parar o processo de teste e remover o cgroup.
+```bash
+# Para o processo
+sudo killall stress
+
+# Remove o diretório do cgroup
+sudo rmdir /sys/fs/cgroup/meu-app
+```
 
 ### Estrutura do projeto
 ```bash
 resource-monitor/
 ├── include/
-│   └── monitor.h
+│   ├── monitor.h
+│   ├── namespace.h
+│   └── cgroup_manager.h
 ├── src/
 │   ├── main.c
 │   ├── cpu_monitor.c
 │   ├── memory_monitor.c
 │   ├── io_monitor.c
 │   ├── net_monitor.c
-│   └── namespace_analyzer.c
+│   ├── namespace_analyzer.c
+│   └── cgroup_manager.c
 └── README.md
 ```
-
-### 3. Control Group Manager
-- Ler métricas de CPU, Memory e BLKIO cgroups
-- Criar cgroup experimental
-- Mover processo para cgroup
-- Aplicar limites de CPU e Memória
-- Gerar relatório de utilização
-- **+ Suporte a cgroup v2 (unified hierarchy)**
 
 ### 4. Qualidade de Código
 - Compilar sem warnings (-Wall -Wextra)
