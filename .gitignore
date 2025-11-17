@@ -1,0 +1,32 @@
+# Arquivos compilados
+*.o
+*.out
+obj/
+resource_monitor
+
+# Resultados dos experimentos
+experimentos/exp*/
+experimentos/RELATORIO_CONSOLIDADO.md
+
+# Arquivos CSV de log
+*.csv
+log.csv
+
+# Arquivos temporários dos experimentos
+*.dat
+/tmp/
+
+# Arquivos de teste
+test_*.c
+test_*
+
+# Editor e IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema
+.DS_Store
+Thumbs.db

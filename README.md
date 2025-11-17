@@ -220,3 +220,26 @@ resource-monitor/
 - README com instruções de compilação e uso
 - **+ Sem memory leaks (validado com valgrind)**
 
+## Experimentos
+
+O projeto inclui 5 experimentos que validam o monitoramento, isolamento e limitação de recursos:
+
+1. **Overhead de Monitoramento** - Impacto do profiler no sistema
+2. **Isolamento via Namespaces** - Efetividade dos 7 tipos de namespaces  
+3. **Throttling de CPU** - Precisão de limites via cgroups
+4. **Limitação de Memória** - Comportamento ao atingir limite
+5. **Limitação de I/O** - Controle de throughput de disco
+
+### Como Executar
+
+```bash
+cd scripts
+./run_experiments.sh  # Menu interativo (requer sudo)
+```
+
+### Documentação
+
+- **Guia Rápido**: `EXPERIMENTOS_QUICKSTART.md`
+- **Documentação Completa**: `experimentos/README.md`
+- **Resultados**: Gerados automaticamente em `experimentos/` após execução
+
