@@ -4,12 +4,6 @@
 
 Este projeto fornece uma ferramenta de linha de comando para monitorar em tempo real o consumo de recursos de processos Linux, analisar seu nível de isolamento através de namespaces e gerenciar a alocação de recursos via control groups (cgroups). Os dados podem ser visualizados diretamente no terminal ou exportados para um arquivo CSV.
 
-## Status do Projeto
-
-- **Componente 1: Resource Profiler - Concluído**
-- **Componente 2: Namespace Analyzer - Concluído**
-- **Componente 3: Control Group Manager - Concluído**
-
 ## Funcionalidades Implementadas
 
 ### Resource Profiler

@@ -12,7 +12,7 @@
 
 // Função auxiliar para escrever em um arquivo de cgroup v2
 static int escrever_no_arquivo_cgroup(const char *nome_grupo, const char *arquivo, const char *valor) {
-    char caminho[512];
+    char caminho[CGROUP_PATH_SIZE];
     // Se nome_grupo for NULL ou vazio, opera na raiz (para habilitar controladores)
     if (nome_grupo == NULL || strcmp(nome_grupo, "") == 0) {
         snprintf(caminho, sizeof(caminho), "%s/%s", CGROUP_V2_MOUNT, arquivo);
@@ -40,16 +40,16 @@ static int escrever_no_arquivo_cgroup(const char *nome_grupo, const char *arquiv
 
 // Função auxiliar para ler uma string de um arquivo de cgroup
 static char* ler_string_cgroup(const char *nome_grupo, const char *arquivo) {
-    char caminho[512];
+    char caminho[CGROUP_PATH_SIZE];
     snprintf(caminho, sizeof(caminho), "%s/%s/%s", CGROUP_V2_MOUNT, nome_grupo, arquivo);
 
     FILE *f = fopen(caminho, "r");
     if (!f) return NULL;
 
-    char *buffer = malloc(4096);
+    char *buffer = malloc(CGROUP_BUFFER_SIZE);
     if (!buffer) { fclose(f); return NULL; }
     
-    size_t bytes_lidos = fread(buffer, 1, 4095, f);
+    size_t bytes_lidos = fread(buffer, 1, CGROUP_BUFFER_SIZE - 1, f);
     buffer[bytes_lidos] = '\0';
     
     fclose(f);
@@ -58,7 +58,7 @@ static char* ler_string_cgroup(const char *nome_grupo, const char *arquivo) {
 
 
 int criar_cgroup(const char *nome_grupo) {
-    char caminho[512];
+    char caminho[CGROUP_PATH_SIZE];
     snprintf(caminho, sizeof(caminho), "%s/%s", CGROUP_V2_MOUNT, nome_grupo);
 
     struct stat st;
@@ -85,7 +85,7 @@ int criar_cgroup(const char *nome_grupo) {
 }
 
 int remover_cgroup(const char *nome_grupo) {
-    char caminho[512];
+    char caminho[CGROUP_PATH_SIZE];
     snprintf(caminho, sizeof(caminho), "%s/%s", CGROUP_V2_MOUNT, nome_grupo);
 
     printf("Removendo cgroup '%s'...\n", nome_grupo);
@@ -101,7 +101,7 @@ int remover_cgroup(const char *nome_grupo) {
 }
 
 int mover_processo_para_cgroup(int pid, const char *nome_grupo) {
-    char pid_str[32];
+    char pid_str[CGROUP_PID_SIZE];
     snprintf(pid_str, sizeof(pid_str), "%d", pid);
 
     printf("Movendo PID %d para o cgroup v2 '%s'...\n", pid, nome_grupo);
@@ -115,7 +115,7 @@ int mover_processo_para_cgroup(int pid, const char *nome_grupo) {
 }
 
 int aplicar_limite_cpu(const char *nome_grupo, long quota_us, long periodo_us) {
-    char valor_str[128];
+    char valor_str[CGROUP_VALUE_SIZE];
     snprintf(valor_str, sizeof(valor_str), "%ld %ld", quota_us, periodo_us);
     
     if (escrever_no_arquivo_cgroup(nome_grupo, "cpu.max", valor_str) != 0) return -1;
@@ -125,7 +125,7 @@ int aplicar_limite_cpu(const char *nome_grupo, long quota_us, long periodo_us) {
 }
 
 int aplicar_limite_memoria(const char *nome_grupo, long long limite_bytes) {
-    char valor_str[64];
+    char valor_str[CGROUP_VALUE_SIZE];
     snprintf(valor_str, sizeof(valor_str), "%lld", limite_bytes);
     
     if (escrever_no_arquivo_cgroup(nome_grupo, "memory.max", valor_str) != 0) return -1;
@@ -149,7 +149,7 @@ int aplicar_limite_io_escrita(const char *nome_grupo, const char *dispositivo, l
     unsigned int major_dev = major(stat_buf.st_rdev);
     unsigned int minor_dev = minor(stat_buf.st_rdev);
     
-    char valor_str[128];
+    char valor_str[CGROUP_VALUE_SIZE];
     snprintf(valor_str, sizeof(valor_str), "%u:%u wbps=%lld", major_dev, minor_dev, bps);
 
     if (escrever_no_arquivo_cgroup(nome_grupo, "io.max", valor_str) != 0) return -1;

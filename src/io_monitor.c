@@ -5,12 +5,12 @@
 #include "monitor.h"
 
 IOMetrics obter_io_metrics(int pid) {
-    char caminho[256];
+    char caminho[PROC_PATH_MAX];
     FILE *arquivo;
-    char linha[256];
+    char linha[PROC_PATH_MAX];
     IOMetrics metrics = {0, 0};
     
-    sprintf(caminho, "/proc/%d/io", pid);
+    snprintf(caminho, sizeof(caminho), "/proc/%d/io", pid);
     arquivo = fopen(caminho, "r");
     if (arquivo == NULL) return metrics;
     
@@ -23,8 +23,8 @@ IOMetrics obter_io_metrics(int pid) {
     return metrics;
 }
 
-void calcular_taxas_io(IOMetrics *antes, IOMetrics *depois, double intervalo_sec, double *read_rate, double *write_rate) {
-    if (intervalo_sec > 0.01) {
+void calcular_taxas_io(const IOMetrics *antes, const IOMetrics *depois, double intervalo_sec, double *read_rate, double *write_rate) {
+    if (intervalo_sec > TIME_DIFF_MIN) {
         *read_rate = (depois->read_bytes - antes->read_bytes) / intervalo_sec;  
         *write_rate = (depois->write_bytes - antes->write_bytes) / intervalo_sec; 
         if (*read_rate < 0) *read_rate = 0;
@@ -36,11 +36,11 @@ void calcular_taxas_io(IOMetrics *antes, IOMetrics *depois, double intervalo_sec
 }
 
 void formatar_taxa(double taxa, char *buffer, size_t size) {
-    if (taxa < 1024) {
+    if (taxa < BYTES_PER_KB) {
         snprintf(buffer, size, "%.0f B/s", taxa);
-    } else if (taxa < 1024 * 1024) {
-        snprintf(buffer, size, "%.1f KB/s", taxa / 1024);
+    } else if (taxa < BYTES_PER_MB) {
+        snprintf(buffer, size, "%.1f KB/s", taxa / BYTES_PER_KB);
     } else {
-        snprintf(buffer, size, "%.1f MB/s", taxa / (1024 * 1024));
+        snprintf(buffer, size, "%.1f MB/s", taxa / BYTES_PER_MB);
     }
 }

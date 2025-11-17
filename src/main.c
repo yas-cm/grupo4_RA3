@@ -7,6 +7,7 @@
 #include "monitor.h"
 #include "namespace.h"
 #include "cgroup_manager.h"
+#include "error.h"
 
 #define MAX_PIDS 128
 

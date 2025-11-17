@@ -9,7 +9,7 @@
 #include "namespace.h"
 
 static int get_ns_id(int pid, const char* ns_type, char* buffer, size_t size) {
-    char path[256];
+    char path[NS_BUFFER_SIZE];
     snprintf(path, sizeof(path), "/proc/%d/ns/%s", pid, ns_type);
 
     ssize_t len = readlink(path, buffer, size - 1);
@@ -17,7 +17,6 @@ static int get_ns_id(int pid, const char* ns_type, char* buffer, size_t size) {
         return 0; 
     }
 
-    // Verificação de segurança: checa se o buffer foi grande o suficiente.
     if ((size_t)len >= size - 1) {
         fprintf(stderr, "Aviso: Buffer pode ter sido truncado para PID %d, ns '%s'.\n", pid, ns_type);
     }
@@ -27,7 +26,7 @@ static int get_ns_id(int pid, const char* ns_type, char* buffer, size_t size) {
 }
 
 void listar_namespaces_processo(int pid) {
-    char path[256];
+    char path[NS_BUFFER_SIZE];
     snprintf(path, sizeof(path), "/proc/%d/ns/", pid);
 
     DIR *dir = opendir(path);
@@ -44,7 +43,7 @@ void listar_namespaces_processo(int pid) {
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL) {
         if (entry->d_type == DT_LNK) {
-            char ns_id[256];
+            char ns_id[NS_BUFFER_SIZE];
             if (get_ns_id(pid, entry->d_name, ns_id, sizeof(ns_id))) {
                 printf("%-10s: %s\n", entry->d_name, ns_id);
             }
@@ -68,22 +67,22 @@ void comparar_namespaces(const char* pids_str) {
         return;
     }
 
-    *virgula = '\0'; // Separa a string em duas no lugar da vírgula
+    *virgula = '\0';
     const char* pid1_str = pids_copy;
     const char* pid2_str = virgula + 1;
 
     int pid1 = atoi(pid1_str);
     int pid2 = atoi(pid2_str);
 
-    const char* ns_types[] = {"cgroup", "ipc", "mnt", "net", "pid", "user", "uts"};
-    int num_ns_types = sizeof(ns_types) / sizeof(ns_types[0]);
+    const char* ns_types[NUM_NS_TYPES] = {"cgroup", "ipc", "mnt", "net", "pid", "user", "uts"};
+    const int num_ns_types = NUM_NS_TYPES;
 
     printf("=== Comparando Namespaces: PID %d vs PID %d ===\n", pid1, pid2);
     printf("%-8s | %-15s | %s\n", "TIPO", "STATUS", "IDENTIFICADOR(ES)");
     printf("-----------------------------------------------------------------\n");
 
     for (int i = 0; i < num_ns_types; i++) {
-        char id1[256], id2[256];
+        char id1[NS_BUFFER_SIZE], id2[NS_BUFFER_SIZE];
         int s1 = get_ns_id(pid1, ns_types[i], id1, sizeof(id1));
         int s2 = get_ns_id(pid2, ns_types[i], id2, sizeof(id2));
         
@@ -103,7 +102,7 @@ void comparar_namespaces(const char* pids_str) {
 }
 
 void encontrar_processos_no_namespace(int pid_referencia, const char* tipo_ns) {
-    char id_alvo[256];
+    char id_alvo[NS_BUFFER_SIZE];
     if (!get_ns_id(pid_referencia, tipo_ns, id_alvo, sizeof(id_alvo))) {
         fprintf(stderr, "Erro: Não foi possível obter o namespace '%s' do PID %d. ", tipo_ns, pid_referencia);
         perror(NULL);
@@ -123,7 +122,7 @@ void encontrar_processos_no_namespace(int pid_referencia, const char* tipo_ns) {
     while ((entry = readdir(proc_dir)) != NULL) {
         int pid_atual = atoi(entry->d_name);
         if (pid_atual > 0) {
-            char id_atual[256];
+            char id_atual[NS_BUFFER_SIZE];
             if (get_ns_id(pid_atual, tipo_ns, id_atual, sizeof(id_atual))) {
                 if (strcmp(id_alvo, id_atual) == 0) {
                     printf("- %d\n", pid_atual);
@@ -139,47 +138,63 @@ typedef struct {
     int process_count;
 } NamespaceStat;
 
-static void add_or_update_stat(NamespaceStat **stats, int *count, int *capacity, const char *id) {
+static int add_or_update_stat(NamespaceStat **stats, int *count, int *capacity, const char *id) {
     for (int i = 0; i < *count; i++) {
         if (strcmp((*stats)[i].ns_id, id) == 0) {
             (*stats)[i].process_count++;
-            return;
+            return 0;
         }
     }
 
     if (*count == *capacity) {
         *capacity *= 2;
-        *stats = realloc(*stats, *capacity * sizeof(NamespaceStat));
-        if (*stats == NULL) exit(1);
+        NamespaceStat *new_stats = realloc(*stats, *capacity * sizeof(NamespaceStat));
+        if (new_stats == NULL) {
+            fprintf(stderr, "Erro: Falha ao realocar memória\n");
+            return -1;
+        }
+        *stats = new_stats;
     }
     
     strncpy((*stats)[*count].ns_id, id, sizeof((*stats)[*count].ns_id) - 1);
     (*stats)[*count].ns_id[sizeof((*stats)[*count].ns_id) - 1] = '\0';
     (*stats)[*count].process_count = 1;
     (*count)++;
+    
+    return 0;
 }
 
 void gerar_relatorio_namespaces_sistema(void) {
     printf("Gerando relatório de namespaces do sistema...\n");
 
-    const char* ns_types[] = {"cgroup", "ipc", "mnt", "net", "pid", "user", "uts"};
-    int num_ns_types = sizeof(ns_types) / sizeof(ns_types[0]);
+    const char* ns_types[NUM_NS_TYPES] = {"cgroup", "ipc", "mnt", "net", "pid", "user", "uts"};
+    const int num_ns_types = NUM_NS_TYPES;
 
     for (int i = 0; i < num_ns_types; i++) {
         int count = 0, capacity = 16;
         NamespaceStat *stats = malloc(capacity * sizeof(NamespaceStat));
-        if (stats == NULL) exit(1);
+        if (stats == NULL) {
+            fprintf(stderr, "Erro: Falha ao alocar memória\n");
+            continue;
+        }
         
         DIR *proc_dir = opendir("/proc");
-        if (proc_dir == NULL) { free(stats); return; }
+        if (proc_dir == NULL) { 
+            free(stats); 
+            continue; 
+        }
 
         struct dirent *entry;
         while ((entry = readdir(proc_dir)) != NULL) {
             int pid = atoi(entry->d_name);
             if (pid > 0) {
-                char id_atual[256];
+                char id_atual[NS_BUFFER_SIZE];
                 if (get_ns_id(pid, ns_types[i], id_atual, sizeof(id_atual))) {
-                    add_or_update_stat(&stats, &count, &capacity, id_atual);
+                    if (add_or_update_stat(&stats, &count, &capacity, id_atual) != 0) {
+                        closedir(proc_dir);
+                        free(stats);
+                        return;
+                    }
                 }
             }
         }

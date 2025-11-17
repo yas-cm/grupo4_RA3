@@ -5,7 +5,7 @@
 #include "monitor.h"
 
 double calcular_uso_memoria_mb(int pid) {
-    char caminho[256];
+    char caminho[PROC_PATH_MAX];
     FILE *arquivo;
     unsigned long rss_pages = 0;
     
@@ -21,13 +21,13 @@ double calcular_uso_memoria_mb(int pid) {
     fclose(arquivo);
     
     long page_size = sysconf(_SC_PAGESIZE);
-    return (rss_pages * page_size) / (1024.0 * 1024.0);
+    return (rss_pages * page_size) / (double)BYTES_PER_MB;
 }
 
 void obter_page_faults_e_swap(int pid, unsigned long *minor_faults, unsigned long *major_faults, unsigned long *swap_kb) {
-    char caminho[256];
+    char caminho[PROC_PATH_MAX];
     FILE *arquivo;
-    char linha[1024];
+    char linha[PROC_LINE_MAX];
     
     *minor_faults = 0;
     *major_faults = 0;
@@ -60,7 +60,7 @@ void obter_page_faults_e_swap(int pid, unsigned long *minor_faults, unsigned lon
 }
 
 void obter_nome_processo(int pid, char *buffer, size_t size) {
-    char caminho[256];
+    char caminho[PROC_PATH_MAX];
     FILE *arquivo;
     
     snprintf(caminho, sizeof(caminho), "/proc/%d/comm", pid);
@@ -81,7 +81,7 @@ void obter_nome_processo(int pid, char *buffer, size_t size) {
 }
 
 int verificar_processo_existe(int pid) {
-    char caminho[256];
+    char caminho[PROC_PATH_MAX];
     snprintf(caminho, sizeof(caminho), "/proc/%d", pid);
     return access(caminho, F_OK) == 0;
 }

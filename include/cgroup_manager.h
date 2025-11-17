@@ -1,6 +1,12 @@
 #ifndef CGROUP_MANAGER_H
 #define CGROUP_MANAGER_H
 
+/* Constantes para cgroups */
+#define CGROUP_PATH_SIZE 512
+#define CGROUP_BUFFER_SIZE 4096
+#define CGROUP_VALUE_SIZE 128
+#define CGROUP_PID_SIZE 32
+
 /**
  * @brief Gera um relatório completo de utilização e limites para um cgroup.
  *

@@ -18,6 +18,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
+	@echo "✓ Compilação concluída com sucesso!"
 	
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(OBJ_DIR)
@@ -25,6 +26,23 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 
 clean:
 	rm -rf $(OBJ_DIR) $(TARGET)
-	@echo "Limpeza concluída."
+	@echo "✓ Limpeza concluída."
 
-.PHONY: all clean
+# Target para verificar vazamentos de memória com Valgrind
+valgrind: $(TARGET)
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
+	         --verbose ./$(TARGET) --pids $$(pgrep -n bash) --intervalo 2
+
+# Target para análise estática com cppcheck (se disponível)
+check:
+	@command -v cppcheck >/dev/null 2>&1 && \
+	cppcheck --enable=all --suppress=missingIncludeSystem $(SRC_DIR)/ || \
+	echo "cppcheck não disponível"
+
+# Target para formatar código (se clang-format disponível)
+format:
+	@command -v clang-format >/dev/null 2>&1 && \
+	find $(SRC_DIR) $(INC_DIR) -name '*.c' -o -name '*.h' | xargs clang-format -i || \
+	echo "clang-format não disponível"
+
+.PHONY: all clean valgrind check format
