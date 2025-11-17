@@ -6,9 +6,9 @@ Este projeto fornece uma ferramenta de linha de comando para monitorar em tempo 
 
 ## Status do Projeto
 
-- **Componente 1: Resource Profiler - ✅ Concluído**
-- **Componente 2: Namespace Analyzer - ✅ Concluído**
-- **Componente 3: Control Group Manager - ✅ Concluído**
+- **Componente 1: Resource Profiler - Concluído**
+- **Componente 2: Namespace Analyzer - Concluído**
+- **Componente 3: Control Group Manager - Concluído**
 
 ## Funcionalidades Implementadas
 
@@ -195,30 +195,18 @@ sudo rmdir /sys/fs/cgroup/meu-app
 sudo ./resource_monitor --cg-delete meu-app
 ```
 
-### Estrutura do projeto
-```bash
-resource-monitor/
-├── include/
-│   ├── monitor.h
-│   ├── namespace.h
-│   └── cgroup_manager.h
-├── src/
-│   ├── main.c
-│   ├── cpu_monitor.c
-│   ├── memory_monitor.c
-│   ├── io_monitor.c
-│   ├── net_monitor.c
-│   ├── namespace_analyzer.c
-│   └── cgroup_manager.c
-└── README.md
-```
+## Arquitetura
 
-### 4. Qualidade de Código
+Para informações detalhadas sobre a arquitetura do projeto, estrutura de componentes, fluxo de dados e design interno, consulte:
+
+**[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**
+
+## Qualidade de Código
 - Compilar sem warnings (-Wall -Wextra)
 - Código comentado e bem estruturado
 - Makefile funcional
 - README com instruções de compilação e uso
-- **+ Sem memory leaks (validado com valgrind)**
+- **Sem memory leaks (validado com valgrind)**
 
 ## Experimentos
 
@@ -237,9 +225,13 @@ cd scripts
 ./run_experiments.sh  # Menu interativo (requer sudo)
 ```
 
-### Documentação
+### Documentação dos Experimentos
 
-- **Guia Rápido**: `EXPERIMENTOS_QUICKSTART.md`
 - **Documentação Completa**: `experimentos/README.md`
 - **Resultados**: Gerados automaticamente em `experimentos/` após execução
+
+## Documentação Adicional
+
+- **[Arquitetura do Projeto](docs/ARCHITECTURE.md)** - Design interno e estrutura de componentes
+- **[Experimentos](experimentos/README.md)** - Guia completo dos 5 experimentos obrigatórios
 
