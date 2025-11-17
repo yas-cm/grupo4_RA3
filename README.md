@@ -202,30 +202,69 @@ Para informações detalhadas sobre a arquitetura do projeto, estrutura de compo
 - README com instruções de compilação e uso
 - **Sem memory leaks (validado com valgrind)**
 
-## Testes
+## Testes de Validação
 
-O projeto inclui 5 testes que validam o monitoramento, isolamento e limitação de recursos:
+O projeto inclui 5 testes implementados em C que validam o monitoramento, isolamento e limitação de recursos:
 
-1. **Overhead de Monitoramento** - Impacto do profiler no sistema
-2. **Isolamento via Namespaces** - Efetividade dos 7 tipos de namespaces  
-3. **Throttling de CPU** - Precisão de limites via cgroups
-4. **Limitação de Memória** - Comportamento ao atingir limite
-5. **Limitação de I/O** - Controle de throughput de disco
+### Testes Disponíveis
 
-### Como Executar
+1. **test_overhead** - Teste de Overhead de Monitoramento
+   - Mede impacto do profiler no sistema
+   - Compara execução com e sem monitoramento
+   - Testa diferentes intervalos de coleta
+
+2. **test_namespaces** - Teste de Isolamento via Namespaces
+   - Valida criação de namespaces (PID, NET, UTS, IPC, MNT)
+   - Verifica efetividade do isolamento
+   - Mede tempo de criação
+
+3. **test_cpu** - Teste de Limitação de CPU
+   - Valida precisão do throttling de CPU
+   - Mede uso real vs limite configurado
+   - Reporta eventos de throttling
+
+4. **test_memory** - Teste de Limitação de Memória
+   - Testa comportamento ao atingir limite de memória
+   - Monitora eventos OOM (Out of Memory)
+   - Verifica ação do OOM killer
+
+5. **test_io** - Teste de Limitação de I/O
+   - Valida controle de throughput de disco
+   - Testa leitura e escrita
+   - Mede taxa real vs limite configurado
+
+### Compilação
 
 ```bash
-cd scripts
-./run_experiments.sh  # Menu interativo (requer sudo)
+make tests
 ```
 
-### Documentação dos Testes
+### Exemplos de Uso
 
-- **Documentação Completa**: `tests/README.md`
-- **Resultados**: Gerados automaticamente em `tests/` após execução
+```bash
+# Teste de Overhead (não precisa sudo)
+./tests/test_overhead
+
+# Teste de Namespaces
+sudo ./tests/test_namespaces
+
+# Teste de CPU (limite de 50%)
+sudo ./tests/test_cpu 50
+
+# Teste de Memória (limite 100MB, tentar alocar 150MB)
+sudo ./tests/test_memory 100 150
+
+# Teste de I/O (limite 10MB/s, escrita)
+sudo ./tests/test_io 10 write
+```
+
+### Documentação Completa
+
+Para instruções detalhadas, parâmetros e exemplos, consulte:
+
+**[tests/TESTS_README.md](tests/TESTS_README.md)**
 
 ## Documentação Adicional
 
 - **[Arquitetura do Projeto](docs/ARCHITECTURE.md)** - Design interno e estrutura de componentes
-- **[Testes](tests/README.md)** - Guia completo dos 5 testes obrigatórios
 

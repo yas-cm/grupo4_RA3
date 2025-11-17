@@ -73,7 +73,7 @@ int criar_cgroup(const char *nome_grupo) {
 
     // Habilita controladores (falha não-crítica se já habilitados)
     if (escrever_no_arquivo_cgroup(NULL, "cgroup.subtree_control", "+cpu +memory +io") != 0) {
-        fprintf(stderr, "Aviso: Falha ao habilitar controladores na raiz. Podem já estar habilitados.\n";
+        fprintf(stderr, "Aviso: Falha ao habilitar controladores na raiz. Podem já estar habilitados.\n");
     }
 
     printf("Cgroup '%s' criado com sucesso.\n", nome_grupo);
