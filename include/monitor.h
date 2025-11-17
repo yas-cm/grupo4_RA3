@@ -4,21 +4,19 @@
 #include <time.h>
 #include <stddef.h>
 
-/* Constantes de Configuração */
 #define PROC_PATH_MAX 256
 #define PROC_LINE_MAX 1024
 #define NS_ID_MAX 256
 #define CGROUP_PATH_MAX 512
 #define PROCESS_NAME_MAX 256
 
-/* Constantes para Média Móvel Exponencial (EMA) de CPU */
-#define CPU_EMA_ALPHA 0.3        /* Peso para valor novo (30%) */
-#define CPU_EMA_BETA (1.0 - CPU_EMA_ALPHA)  /* Peso para valor antigo (70%) */
-#define CPU_DECAY_FACTOR 0.7     /* Fator de decaimento quando processo some */
-#define CPU_MIN_THRESHOLD 0.1    /* Threshold mínimo para considerar CPU = 0 */
-#define TIME_DIFF_MIN 0.01       /* Intervalo mínimo em segundos para cálculo */
+// Constantes para EMA (suavização de CPU)
+#define CPU_EMA_ALPHA 0.3
+#define CPU_EMA_BETA (1.0 - CPU_EMA_ALPHA)
+#define CPU_DECAY_FACTOR 0.7
+#define CPU_MIN_THRESHOLD 0.1
+#define TIME_DIFF_MIN 0.01
 
-/* Constantes para formatação de taxas */
 #define BYTES_PER_KB 1024
 #define BYTES_PER_MB (1024 * 1024)
 

@@ -202,9 +202,9 @@ Para informações detalhadas sobre a arquitetura do projeto, estrutura de compo
 - README com instruções de compilação e uso
 - **Sem memory leaks (validado com valgrind)**
 
-## Experimentos
+## Testes
 
-O projeto inclui 5 experimentos que validam o monitoramento, isolamento e limitação de recursos:
+O projeto inclui 5 testes que validam o monitoramento, isolamento e limitação de recursos:
 
 1. **Overhead de Monitoramento** - Impacto do profiler no sistema
 2. **Isolamento via Namespaces** - Efetividade dos 7 tipos de namespaces  
@@ -219,13 +219,13 @@ cd scripts
 ./run_experiments.sh  # Menu interativo (requer sudo)
 ```
 
-### Documentação dos Experimentos
+### Documentação dos Testes
 
-- **Documentação Completa**: `experimentos/README.md`
-- **Resultados**: Gerados automaticamente em `experimentos/` após execução
+- **Documentação Completa**: `tests/README.md`
+- **Resultados**: Gerados automaticamente em `tests/` após execução
 
 ## Documentação Adicional
 
 - **[Arquitetura do Projeto](docs/ARCHITECTURE.md)** - Design interno e estrutura de componentes
-- **[Experimentos](experimentos/README.md)** - Guia completo dos 5 experimentos obrigatórios
+- **[Testes](tests/README.md)** - Guia completo dos 5 testes obrigatórios
 

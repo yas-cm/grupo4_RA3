@@ -10,10 +10,8 @@
 
 #define CGROUP_V2_MOUNT "/sys/fs/cgroup"
 
-// Função auxiliar para escrever em um arquivo de cgroup v2
 static int escrever_no_arquivo_cgroup(const char *nome_grupo, const char *arquivo, const char *valor) {
     char caminho[CGROUP_PATH_SIZE];
-    // Se nome_grupo for NULL ou vazio, opera na raiz (para habilitar controladores)
     if (nome_grupo == NULL || strcmp(nome_grupo, "") == 0) {
         snprintf(caminho, sizeof(caminho), "%s/%s", CGROUP_V2_MOUNT, arquivo);
     } else {
@@ -38,7 +36,6 @@ static int escrever_no_arquivo_cgroup(const char *nome_grupo, const char *arquiv
     return 0;
 }
 
-// Função auxiliar para ler uma string de um arquivo de cgroup
 static char* ler_string_cgroup(const char *nome_grupo, const char *arquivo) {
     char caminho[CGROUP_PATH_SIZE];
     snprintf(caminho, sizeof(caminho), "%s/%s/%s", CGROUP_V2_MOUNT, nome_grupo, arquivo);
@@ -74,10 +71,9 @@ int criar_cgroup(const char *nome_grupo) {
         return -1;
     }
 
-    // Em cgroups v2, precisamos habilitar os controladores para o subgrupo a partir do pai.
+    // Habilita controladores (falha não-crítica se já habilitados)
     if (escrever_no_arquivo_cgroup(NULL, "cgroup.subtree_control", "+cpu +memory +io") != 0) {
-        // Isso pode falhar se já estiverem habilitados, o que não é um erro crítico.
-        fprintf(stderr, "Aviso: Falha ao habilitar controladores na raiz. Podem já estar habilitados.\n");
+        fprintf(stderr, "Aviso: Falha ao habilitar controladores na raiz. Podem já estar habilitados.\n";
     }
 
     printf("Cgroup '%s' criado com sucesso.\n", nome_grupo);
@@ -161,7 +157,6 @@ int aplicar_limite_io_escrita(const char *nome_grupo, const char *dispositivo, l
 void gerar_relatorio_cgroup(const char *nome_grupo) {
     printf("--- Relatório do Cgroup v2: %s ---\n\n", nome_grupo);
     
-    // --- CPU ---
     printf("[CPU]\n");
     char* cpu_stat_str = ler_string_cgroup(nome_grupo, "cpu.stat");
     if (cpu_stat_str) {
@@ -185,7 +180,6 @@ void gerar_relatorio_cgroup(const char *nome_grupo) {
     printf("  Limite Configurado: %s", cpu_max_str ? cpu_max_str : "Ilimitado\n");
     if (cpu_max_str) free(cpu_max_str);
 
-    // --- Memória ---
     printf("\n[Memória]\n");
     char* mem_current_str = ler_string_cgroup(nome_grupo, "memory.current");
     long long mem_current = mem_current_str ? atoll(mem_current_str) : 0;
@@ -213,7 +207,6 @@ void gerar_relatorio_cgroup(const char *nome_grupo) {
         free(mem_events_str);
     }
 
-    // --- I/O ---
     printf("\n[I/O]\n");
     char *io_stat_str = ler_string_cgroup(nome_grupo, "io.stat");
     if (io_stat_str && strlen(io_stat_str) > 0) {

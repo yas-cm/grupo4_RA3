@@ -117,10 +117,10 @@ run_all() {
 generate_consolidated_report() {
     echo -e "${YELLOW}Gerando relatório consolidado...${NC}"
     
-    CONSOLIDATED_REPORT="$PROJECT_ROOT/experimentos/RELATORIO_CONSOLIDADO.md"
+    CONSOLIDATED_REPORT="$PROJECT_ROOT/tests/RELATORIO_CONSOLIDADO.md"
     
     cat > "$CONSOLIDATED_REPORT" << 'EOF'
-# Relatório Consolidado dos Experimentos Obrigatórios
+# Relatório Consolidado dos Testes Obrigatórios
 
 ## Informações do Sistema
 
@@ -143,7 +143,7 @@ EOF
     
     # Adicionar cada experimento
     for i in {1..5}; do
-        local exp_dir="$PROJECT_ROOT/experimentos/exp${i}_"*
+        local exp_dir="$PROJECT_ROOT/tests/exp${i}_"*
         local report_file=$(find $exp_dir -name "RELATORIO.md" 2>/dev/null | head -1)
         
         if [ -f "$report_file" ]; then
@@ -159,7 +159,7 @@ EOF
     # Adicionar conclusão geral
     cat >> "$CONSOLIDATED_REPORT" << 'EOF'
 
-## Conclusão Geral dos Experimentos
+## Conclusão Geral dos Testes
 
 ### Principais Descobertas
 
@@ -175,7 +175,7 @@ EOF
 
 ### Aplicações Práticas
 
-Estes experimentos demonstram as capacidades fundamentais que permitem a containerização moderna:
+Estes testes demonstram as capacidades fundamentais que permitem a containerização moderna:
 
 - **Docker/Podman**: Utilizam namespaces para isolamento e cgroups para limitação de recursos
 - **Kubernetes**: Gerencia recursos de containers através de cgroups
@@ -241,8 +241,8 @@ list_results() {
     echo -e "${BLUE}Resultados existentes:${NC}"
     echo ""
     
-    if [ -d "$PROJECT_ROOT/experimentos" ]; then
-        for exp_dir in "$PROJECT_ROOT/experimentos"/exp*; do
+    if [ -d "$PROJECT_ROOT/tests" ]; then
+        for exp_dir in "$PROJECT_ROOT/tests"/exp*; do
             if [ -d "$exp_dir" ]; then
                 local exp_name=$(basename "$exp_dir")
                 local report="$exp_dir/RELATORIO.md"

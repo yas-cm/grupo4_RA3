@@ -10,7 +10,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 MONITOR_BIN="$PROJECT_ROOT/resource_monitor"
-RESULTS_DIR="$PROJECT_ROOT/experimentos/exp2_namespaces"
+RESULTS_DIR="$PROJECT_ROOT/tests/exp2_namespaces"
 
 # Cores
 RED='\033[0;31m'

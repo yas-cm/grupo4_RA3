@@ -1,7 +1,6 @@
 #ifndef NAMESPACE_H
 #define NAMESPACE_H
 
-/* Constantes para namespaces */
 #define NS_BUFFER_SIZE 256
 #define NUM_NS_TYPES 7
 

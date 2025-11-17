@@ -26,8 +26,8 @@ resource-monitor/
 │   └── cgroup_manager.c        # Gerenciamento de cgroups
 ├── obj/                        # Arquivos objeto compilados
 ├── docs/                       # Documentação
-├── scripts/                    # Scripts de experimentos
-├── experimentos/               # Resultados dos experimentos
+├── scripts/                    # Scripts de testes
+├── tests/                      # Resultados dos testes
 ├── Makefile                    # Sistema de build
 └── README.md                   # Documentação principal
 ```
@@ -251,7 +251,7 @@ make clean  # Limpar
 
 - **Compilador**: GCC 11.4.0+
 - **Bibliotecas**: Apenas `libc` padrão (sem dependências externas)
-- **Ferramentas de teste**: `stress`, `bc` (para experimentos)
+- **Ferramentas de teste**: `stress`, `bc` (para testes)
 
 ## Qualidade de Código
 
@@ -337,8 +337,8 @@ Todas as operações que modificam o sistema requerem root:
 
 ## Testes
 
-### Experimentos Implementados
-O projeto inclui 5 experimentos automatizados:
+### Testes Implementados
+O projeto inclui 5 testes automatizados:
 
 1. **Overhead de Monitoramento** - Valida baixo impacto no sistema
 2. **Isolamento via Namespaces** - Verifica efetividade dos 7 tipos
@@ -352,9 +352,9 @@ cd scripts
 ./run_experiments.sh  # Menu interativo
 ```
 
-### Documentação dos Experimentos
-- `experimentos/README.md` - Documentação completa
-- `experimentos/RELATORIO_CONSOLIDADO.md` - Resultados (gerado após execução)
+### Documentação dos Testes
+- `tests/README.md` - Documentação completa
+- `tests/RELATORIO_CONSOLIDADO.md` - Resultados (gerado após execução)
 
 ## Referências
 

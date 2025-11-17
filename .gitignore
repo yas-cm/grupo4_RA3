@@ -4,15 +4,15 @@
 obj/
 resource_monitor
 
-# Resultados dos experimentos
-experimentos/exp*/
-experimentos/RELATORIO_CONSOLIDADO.md
+# Resultados dos testes
+tests/exp*/
+tests/RELATORIO_CONSOLIDADO.md
 
 # Arquivos CSV de log
 *.csv
 log.csv
 
-# Arquivos temporários dos experimentos
+# Arquivos temporários dos testes
 *.dat
 /tmp/
 

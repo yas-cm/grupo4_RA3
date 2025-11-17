@@ -1,8 +1,8 @@
-# Experimentos de Análise de Recursos e Isolamento
+# Testes de Análise de Recursos e Isolamento
 
 ```
 ╔═══════════════════════════════════════════════════════════════════════════╗
-║     EXPERIMENTOS OBRIGATÓRIOS - IMPLEMENTAÇÃO COMPLETA                    ║
+║     TESTES OBRIGATÓRIOS - IMPLEMENTAÇÃO COMPLETA                          ║
 ╚═══════════════════════════════════════════════════════════════════════════╝
 ```
 
@@ -16,7 +16,7 @@
    make
    ```
 
-2. **Executar todos os experimentos**:
+2. **Executar todos os testes**:
    ```bash
    cd scripts
    ./run_experiments.sh
@@ -36,22 +36,22 @@
 
 ###  Notas Importantes
 
-- **Privilégios**: Experimentos 2-5 precisam de sudo
+- **Privilégios**: Testes 2-5 precisam de sudo
 - **Duração**: ~10 minutos total
-- **Resultados**: `experimentos/RELATORIO_CONSOLIDADO.md`
+- **Resultados**: `tests/RELATORIO_CONSOLIDADO.md`
 - **Segurança**: Pode usar 100% CPU e até 200MB RAM temporariamente
 
 ---
 
-##  Experimentos Implementados
+##  Testes Implementados
 
 ```
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ EXPERIMENTOS IMPLEMENTADOS                                            ┃
+┃ TESTES IMPLEMENTADOS                                                  ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 ```
 
-###  Experimento 1: Overhead de Monitoramento
+###  Teste 1: Overhead de Monitoramento
 - **Script**: `scripts/experimento1_overhead.sh` (6.7 KB)
 - **Duração**: ~2 minutos
 - **Privilégios**: NÃO precisa sudo
@@ -70,7 +70,7 @@
 
 ---
 
-###  Experimento 2: Isolamento via Namespaces
+###  Teste 2: Isolamento via Namespaces
 - **Script**: `scripts/experimento2_namespaces.sh` (8.2 KB)
 - **Duração**: ~1 minuto
 - **Privilégios**: PRECISA sudo
@@ -89,7 +89,7 @@
 
 ---
 
-###  Experimento 3: Throttling de CPU
+###  Teste 3: Throttling de CPU
 - **Script**: `scripts/experimento3_cpu_throttling.sh` (9.7 KB)
 - **Duração**: ~2 minutos
 - **Privilégios**: PRECISA sudo
@@ -110,7 +110,7 @@
 
 ---
 
-###  Experimento 4: Limitação de Memória
+###  Teste 4: Limitação de Memória
 - **Script**: `scripts/experimento4_memory_limit.sh` (11 KB)
 - **Duração**: ~1 minuto
 - **Privilégios**: PRECISA sudo
@@ -130,7 +130,7 @@
 
 ---
 
-###  Experimento 5: Limitação de I/O
+###  Teste 5: Limitação de I/O
 - **Script**: `scripts/experimento5_io_limit.sh` (13 KB)
 - **Duração**: ~2 minutos
 - **Privilégios**: PRECISA sudo
@@ -151,11 +151,11 @@
 
 ###  Script Mestre
 - **Script**: `scripts/run_experiments.sh` (12 KB)
-- **Duração**: ~10 minutos (todos os experimentos)
+- **Duração**: ~10 minutos (todos os testes)
 
 **Características**:
 - Menu interativo colorido
-- Executa experimentos individuais ou todos de uma vez
+- Executa testes individuais ou todos de uma vez
 - Verifica dependências automaticamente
 - Gera relatório consolidado
 - Lista resultados existentes
@@ -177,20 +177,20 @@ cd scripts
 O script irá:
 - Verificar dependências
 - Mostrar menu com opções
-- Permitir execução individual ou de todos os experimentos
+- Permitir execução individual ou de todos os testes
 - Gerar relatório consolidado automaticamente
 
 ### Método 2: Execução Individual
 
-Execute cada experimento separadamente:
+Execute cada teste separadamente:
 
 ```bash
 cd scripts
 
-# Experimento 1 (não precisa sudo)
+# Teste 1 (não precisa sudo)
 ./experimento1_overhead.sh
 
-# Experimentos 2-5 (precisam sudo)
+# Testes 2-5 (precisam sudo)
 sudo ./experimento2_namespaces.sh
 sudo ./experimento3_cpu_throttling.sh
 sudo ./experimento4_memory_limit.sh
@@ -225,7 +225,7 @@ sudo apt-get install -y \
 Após a execução, os resultados estarão organizados em:
 
 ```
-experimentos/
+tests/
 ├── README.md                         ← Este arquivo
 ├── RELATORIO_CONSOLIDADO.md          ← RELATÓRIO PRINCIPAL
 │
@@ -259,7 +259,7 @@ experimentos/
 - **RELATORIO.md**: Análise detalhada com conclusões e recomendações
 - **\*.csv**: Dados brutos para análise posterior
 - **\*.txt**: Outputs, logs e análises complementares
-- **cgroup_report_\*.txt**: Estatísticas de cgroups (experimentos 3-5)
+- **cgroup_report_\*.txt**: Estatísticas de cgroups (testes 3-5)
 
 ---
 
@@ -270,15 +270,15 @@ experimentos/
 Para visualizar os relatórios gerados:
 
 ```bash
-# Relatório consolidado de todos os experimentos
-cat experimentos/RELATORIO_CONSOLIDADO.md
+# Relatório consolidado de todos os testes
+cat tests/RELATORIO_CONSOLIDADO.md
 
 # Relatório individual
-cat experimentos/exp1_overhead/RELATORIO.md
-cat experimentos/exp2_namespaces/RELATORIO.md
-cat experimentos/exp3_cpu_throttling/RELATORIO.md
-cat experimentos/exp4_memory_limit/RELATORIO.md
-cat experimentos/exp5_io_limit/RELATORIO.md
+cat tests/exp1_overhead/RELATORIO.md
+cat tests/exp2_namespaces/RELATORIO.md
+cat tests/exp3_cpu_throttling/RELATORIO.md
+cat tests/exp4_memory_limit/RELATORIO.md
+cat tests/exp5_io_limit/RELATORIO.md
 ```
 
 ### Plotar Gráficos
@@ -296,7 +296,7 @@ cd scripts
 
 ### Privilégios Root
 
-Os experimentos 2-5 **precisam de privilégios root** porque:
+Os testes 2-5 **precisam de privilégios root** porque:
 - Criam e manipulam cgroups em `/sys/fs/cgroup`
 - Criam novos namespaces
 - Movem processos entre cgroups
@@ -316,10 +316,10 @@ Se retornar `tmpfs`, seu sistema ainda usa cgroups v1. Ubuntu 22.04+ usa v2 por 
 
 ### Impacto no Sistema
 
-Os experimentos são **seguros** mas podem:
-- Usar 100% de CPU temporariamente (Exp 1 e 3)
-- Alocar até 200MB de RAM (Exp 4)
-- Gerar I/O intenso no disco (Exp 5)
+Os testes são **seguros** mas podem:
+- Usar 100% de CPU temporariamente (Teste 1 e 3)
+- Alocar até 200MB de RAM (Teste 4)
+- Gerar I/O intenso no disco (Teste 5)
 
 **Recomendação**: Execute em VM ou sistema de testes, não em produção.
 
@@ -327,11 +327,11 @@ Os experimentos são **seguros** mas podem:
 
 ```
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Experimento 1: ~2 minutos                        ┃
-┃ Experimento 2: ~1 minuto                         ┃
-┃ Experimento 3: ~2 minutos                        ┃
-┃ Experimento 4: ~1 minuto                         ┃
-┃ Experimento 5: ~2 minutos                        ┃
+┃ Teste 1: ~2 minutos                              ┃
+┃ Teste 2: ~1 minuto                               ┃
+┃ Teste 3: ~2 minutos                              ┃
+┃ Teste 4: ~1 minuto                               ┃
+┃ Teste 5: ~2 minutos                              ┃
 ┃ ───────────────────────────────────────────────  ┃
 ┃ TOTAL: ~10 minutos                               ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
@@ -362,7 +362,7 @@ Certifique-se de:
 2. SELinux/AppArmor não está bloqueando
 3. Ter permissões de escrita em `/sys/fs/cgroup`
 
-### Experimento 4 ou 5 não funciona no WSL2
+### Teste 4 ou 5 não funciona no WSL2
 WSL2 tem limitações nos controladores de cgroups para memória e I/O.
 Os scripts detectam isso e reportam as limitações.
 Execute em uma VM Ubuntu nativa para resultados completos.
@@ -377,27 +377,27 @@ Execute em uma VM Ubuntu nativa para resultados completos.
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 ```
 
-### Experimento 1: Overhead de Monitoramento
+### Teste 1: Overhead de Monitoramento
 -  Tempo de execução com e sem profiler
 -  CPU overhead (%)
 -  Latência de sampling
 
-### Experimento 2: Isolamento via Namespaces
+### Teste 2: Isolamento via Namespaces
 -  Tabela de isolamento efetivo por tipo de namespace
 -  Overhead de criação (µs)
 -  Número de processos por namespace no sistema
 
-### Experimento 3: Throttling de CPU
+### Teste 3: Throttling de CPU
 -  CPU% medido vs limite configurado
 -  Desvio percentual
 -  Throughput (iterações/segundo) em cada configuração
 
-### Experimento 4: Limitação de Memória
+### Teste 4: Limitação de Memória
 -  Quantidade máxima alocada
 -  Número de falhas (memory.failcnt)
 -  Comportamento do sistema ao atingir limite
 
-### Experimento 5: Limitação de I/O
+### Teste 5: Limitação de I/O
 -  Throughput medido vs limite configurado
 -  Latência de I/O
 -  Impacto no tempo total de execução
@@ -419,8 +419,8 @@ Execute em uma VM Ubuntu nativa para resultados completos.
 
 ```
  Use o script mestre (run_experiments.sh) - ele é interativo!
- Experimentos 2-5 precisam de sudo - não esqueça!
- Cada experimento gera seu próprio relatório detalhado
+ Testes 2-5 precisam de sudo - não esqueça!
+ Cada teste gera seu próprio relatório detalhado
  O relatório consolidado junta todos os resultados
  Todos os dados ficam salvos em CSV para análise posterior
  Scripts têm cores e mensagens claras para facilitar o uso
@@ -448,7 +448,7 @@ Execute em uma VM Ubuntu nativa para resultados completos.
 
 ##  Próximos Passos
 
-1. **Executar experimentos**
+1. **Executar testes**
    ```bash
    cd scripts
    ./run_experiments.sh
@@ -457,7 +457,7 @@ Execute em uma VM Ubuntu nativa para resultados completos.
 
 2. **Verificar resultados**
    ```bash
-   cat experimentos/RELATORIO_CONSOLIDADO.md
+   cat tests/RELATORIO_CONSOLIDADO.md
    ```
 
 3. **Adicionar autores ao README principal**
@@ -469,6 +469,6 @@ Execute em uma VM Ubuntu nativa para resultados completos.
 4. **Commit para repositório**
    ```bash
    git add .
-   git commit -m "Add: Experimentos obrigatórios completos"
+   git commit -m "Add: Testes obrigatórios completos"
    git push
    ```

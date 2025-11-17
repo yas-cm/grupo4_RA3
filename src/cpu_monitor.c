@@ -1,11 +1,3 @@
-/**
- * @file cpu_monitor.c
- * @brief Implementação do monitoramento de CPU
- * 
- * Coleta métricas de uso de CPU através do /proc/[pid]/stat,
- * aplicando suavização exponencial (EMA) para estabilizar leituras.
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,18 +5,7 @@
 #include <time.h>
 #include "monitor.h"
 
-/**
- * @brief Calcula o uso percentual de CPU de um processo
- * 
- * Lê os valores de utime e stime do /proc/[pid]/stat e calcula
- * o percentual de CPU usado desde a última medição. Aplica uma
- * Média Móvel Exponencial (EMA) para suavizar oscilações.
- * 
- * Fórmula EMA: new_value = (old_value × β) + (raw_value × α)
- * onde α = 0.3 (peso novo) e β = 0.7 (peso antigo)
- * 
- * @param metrics Estrutura com métricas do processo (entrada/saída)
- */
+// Calcula uso de CPU com suavização EMA para reduzir oscilações
 void calcular_cpu_usage(ProcessMetrics *metrics) {
     char caminho[PROC_PATH_MAX];
     FILE *arquivo;
@@ -34,15 +15,12 @@ void calcular_cpu_usage(ProcessMetrics *metrics) {
     snprintf(caminho, sizeof(caminho), "/proc/%d/stat", metrics->pid);
     arquivo = fopen(caminho, "r");
     if (arquivo == NULL) {
-        // Se o processo sumiu, aplicamos um decaimento suave no valor de CPU
         metrics->cpu_usage = metrics->cpu_usage * CPU_DECAY_FACTOR; 
         if (metrics->cpu_usage < CPU_MIN_THRESHOLD) metrics->cpu_usage = 0.0;
         return;
     }
 
-    // --- LÓGICA DE LEITURA CORRIGIDA E ROBUSTA ---
-    // /proc/[pid]/stat pode conter nomes de processo com parênteses e espaços,
-    // então precisamos localizar o último ')' para pular o nome corretamente
+    // Parsing robusto: localiza ')' para pular nome do processo
     char linha[PROC_LINE_MAX];
     if (fgets(linha, sizeof(linha), arquivo) == NULL) {
         fclose(arquivo);
@@ -51,16 +29,12 @@ void calcular_cpu_usage(ProcessMetrics *metrics) {
     }
     fclose(arquivo);
 
-    // Encontra o fim do nome do processo, que está entre parênteses
     char *comm_end = strrchr(linha, ')');
     if (comm_end == NULL) {
         metrics->cpu_usage = 0.0;
         return;
     }
 
-    // Os campos que queremos (utime e stime) estão após o nome do processo.
-    // sscanf começa a ler a partir de 'comm_end + 2' para pular o ')' e o espaço.
-    // Os campos são: (14) utime e (15) stime. Pulamos os 11 campos intermediários.
     int result = sscanf(comm_end + 2, 
         "%*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu %lu", 
         &utime, &stime);
@@ -69,21 +43,18 @@ void calcular_cpu_usage(ProcessMetrics *metrics) {
         metrics->cpu_usage = 0.0;
         return;
     }
-    // --- FIM DA LÓGICA CORRIGIDA ---
 
     unsigned long total_jiffies = utime + stime;
     struct timespec current_time;
     clock_gettime(CLOCK_MONOTONIC, &current_time);
 
-    // Se for a primeira leitura, apenas armazenamos os valores e saímos.
     if (metrics->last_total_jiffies == 0) {
         metrics->last_total_jiffies = total_jiffies;
         metrics->last_time_snapshot = current_time;
-        metrics->cpu_usage = 0.0; // Garante que a primeira exibição seja 0
+        metrics->cpu_usage = 0.0;
         return;
     }
 
-    // Calcula diferenças desde última leitura
     double jiffies_diff = total_jiffies - metrics->last_total_jiffies;
     double time_diff_sec = (current_time.tv_sec - metrics->last_time_snapshot.tv_sec) + 
                            (current_time.tv_nsec - metrics->last_time_snapshot.tv_nsec) / 1e9;
@@ -91,19 +62,14 @@ void calcular_cpu_usage(ProcessMetrics *metrics) {
     metrics->last_total_jiffies = total_jiffies;
     metrics->last_time_snapshot = current_time;
 
-    if (time_diff_sec < TIME_DIFF_MIN) { 
-        // Intervalo muito curto, mantém o valor anterior para evitar picos estranhos
-        return;
-    }
+    if (time_diff_sec < TIME_DIFF_MIN) return;
 
-    // Converte jiffies para segundos de CPU e calcula percentual
     double cpu_seconds_used = jiffies_diff / (double)clock_ticks;
     double raw_cpu_usage = (cpu_seconds_used / time_diff_sec) * 100.0;
     
     if (raw_cpu_usage < 0.0) raw_cpu_usage = 0.0;
     
-    // Aplica uma Média Móvel Exponencial (EMA) para suavizar a saída
-    // Isso reduz oscilações bruscas mantendo responsividade
+    // Aplica EMA para suavizar oscilações
     metrics->cpu_usage = (metrics->cpu_usage * CPU_EMA_BETA) + (raw_cpu_usage * CPU_EMA_ALPHA);
 }
 

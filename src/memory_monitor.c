@@ -13,7 +13,6 @@ double calcular_uso_memoria_mb(int pid) {
     arquivo = fopen(caminho, "r");
     if (arquivo == NULL) return 0.0;
     
-    // fscanf aqui é relativamente seguro pois o formato de statm é simples
     if (fscanf(arquivo, "%*d %lu", &rss_pages) != 1) {
         fclose(arquivo);
         return 0.0;
@@ -39,7 +38,6 @@ void obter_page_faults_e_swap(int pid, unsigned long *minor_faults, unsigned lon
         if (fgets(linha, sizeof(linha), arquivo) != NULL) {
             char *comm_end = strrchr(linha, ')');
             if (comm_end != NULL) {
-                // Pula 7 campos após o nome do processo para chegar em minflt (10) e majflt (12)
                 sscanf(comm_end + 2, "%*c %*d %*d %*d %*d %*d %*u %lu %*u %lu",
                        minor_faults, major_faults);
             }
